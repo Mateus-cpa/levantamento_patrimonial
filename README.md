@@ -9,6 +9,8 @@
 ## 4. Construir tela de levantamento# levantamento_patrimonial
 
 # Configurar e executar código
+
+Ativa ambiente virtual
 ```bash
 python -m venv .venv
 pyenv local 3.13.0
@@ -18,12 +20,14 @@ poetry shell
 
 ```
 
+Ativa FastAPI
 ```bash
 poetry install
-poetry run streamlit run src/app_streamlit.py
-
+poetry run uvicorn src.main:app --reload
 ```
 
+Executa Streamlit
 ```bash
-poetry run uvicorn src.main:app --reload
+poetry run streamlit run src/app_streamlit.py
+
  ```
