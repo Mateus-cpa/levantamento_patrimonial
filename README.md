@@ -23,3 +23,7 @@ poetry install
 poetry run streamlit run src/app_streamlit.py
 
 ```
+
+```bash
+poetry run uvicorn src.main:app --reload
+ ```
