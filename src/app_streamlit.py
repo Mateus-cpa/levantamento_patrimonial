@@ -1,12 +1,17 @@
 import streamlit as st
 import requests
 
+from utils.env_loader import get_users
+
 API_URL = "http://127.0.0.1:8000"
 
 st.title("Levantamento Patrimonial")
 
 st.header("Credenciamento")
-username = st.text_input("Usuário")
+# Importar keys de usuários em .env
+
+users = ['miguel.mfp', 'pericles.pd', 'getulio.gbs', 'admin']
+username = st.selectbox("Usuário", options=users)
 password = st.text_input("Senha", type="password")
 
 if st.button("Entrar"):

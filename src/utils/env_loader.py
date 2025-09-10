@@ -4,7 +4,10 @@ import os
 load_dotenv()
 
 def get_users():
-    return {k: v for k, v in os.environ.items() if k.startswith("USER")}
+    """
+    Retorna um dicionário com os usuários e suas senhas.
+    """
+    return {k: v for k, v in os.environ.items() if k not in ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASS"]}
 
 def get_db_config():
     return {

@@ -13,9 +13,10 @@ app = FastAPI(
 
 # Exemplo de dados: mapeamento de usuários para UGs
 USER_UGS = {
-    "USER1": ["UG1", "UG2"],
-    "USER2": ["UG2"],
-    "admin": ["UG1", "UG2", "UG3"],
+    "miguel.mfp": ["SRPB", "SRPE"],
+    "pericles.pd": ["SRPB", "SRAC"],
+    "getulio.gbs": ["SRPR", "SRAL"],
+    "admin": ["SRPR", "SRPB", "SRPE", "SRAC", "SRAL"],
 }
 
 @app.get("/")
