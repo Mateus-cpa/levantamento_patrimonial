@@ -13,7 +13,7 @@
 Ativa ambiente virtual
 ```bash
 python -m venv .venv
-pyenv local 3.13.0
+pyenv local 3.10.11
 source .venv/Scripts/activate
 poetry init
 poetry shell
