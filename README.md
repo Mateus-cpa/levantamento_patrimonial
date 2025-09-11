@@ -12,17 +12,17 @@
 
 Ativa ambiente virtual
 ```bash
-python -m venv .venv
+rm -r .venv
 pyenv local 3.10.11
-source .venv/Scripts/activate
 poetry init
-poetry shell
+poetry env use 3.10.11
+poetry install
+poetry run honcho start
 
 ```
 
 Ativa FastAPI
 ```bash
-poetry install
 poetry run uvicorn src.main:app --reload
 
 ```

@@ -6,16 +6,23 @@ authors = ["Mateus Pinheiro <mateus.mcpa@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.11"
+fastapi = "^0.111.0"
+uvicorn = "^0.30.1"
 streamlit = "^1.49.1"
 psycopg2 = "^2.9.10"
-fastapi = "^0.116.1"
-uvicorn = "^0.35.0"
 python-dotenv = "^1.1.1"
 psycopg2-binary = "^2.9.10"
 pandas = "^2.3.2"
 python-multipart = "^0.0.20"
+tqdm = "^4.67.1"
+python-calamine = "^0.5.3"
+openpyxl = "^3.1.5"
+pydantic = "2.11.7"
 
+
+[tool.poetry.group.dev.dependencies]
+honcho = "^2.0.0"
 
 [build-system]
 requires = ["poetry-core"]
