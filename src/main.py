@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Query
-from typing import List
 from src.auth.credenciamento import router as auth_router
 from src.menu.menu_principal import router as menu_router
 from src.status_levantamento.excel_import import router as status_router
@@ -13,7 +12,7 @@ app = FastAPI(
 
 # Exemplo de dados: mapeamento de usuários para UGs
 USER_UGS = {
-    "miguel.mfp": ["SRPB", "SRPE"],
+    "miguel.mpf": ["SRPB", "SRPE"],
     "pericles.pd": ["SRPB", "SRAC"],
     "getulio.gbs": ["SRPR", "SRAL"],
     "admin": ["SRPR", "SRPB", "SRPE", "SRAC", "SRAL"],

@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import json
 
 load_dotenv()
 
@@ -7,7 +8,8 @@ def get_users():
     """
     Retorna um dicionário com os usuários e suas senhas.
     """
-    return {k: v for k, v in os.environ.items() if k not in ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASS"]}
+    users_str = os.getenv("USERS")
+    return json.loads(users_str)
 
 def get_db_config():
     return {
