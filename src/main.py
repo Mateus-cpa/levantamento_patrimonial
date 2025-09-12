@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Query
 from src.auth.credenciamento import router as auth_router
-from src.menu.menu_principal import router as menu_router
-from src.status_levantamento.excel_import import router as status_router
 from src.levantamento.levantamento import router as levantamento_router
+from src.pages.status import router as status_router
+from src.menu_principal.menu import router as menu_router
 
 app = FastAPI(
     title="Levantamento Patrimonial API",
@@ -15,7 +15,40 @@ USER_UGS = {
     "miguel.mpf": ["SRPB", "SRPE"],
     "pericles.pd": ["SRPB", "SRAC"],
     "getulio.gbs": ["SRPR", "SRAL"],
-    "admin": ["SRPR", "SRPB", "SRPE", "SRAC", "SRAL"],
+    "admin":  [
+    'SRAC',
+    'SRAL',
+    'SRAP',
+    'SRAM',
+    'SRBA',
+    'SRCE',
+    'CGAD',
+    'SRDF',
+    'DITEC',
+    'DIREN',
+    'DTI',
+    'SRES',
+    'FIG',
+    'SRGO',
+    'SRMA',
+    'SRMT',
+    'SRMS',
+    'SRMG',
+    'SRPA',
+    'SRPB',
+    'SRPR',
+    'SRPE',
+    'SRPI',
+    'SRRJ',
+    'SRRN',
+    'SRRS',
+    'SRRO',
+    'SRRR',
+    'SRSC',
+    'SRSP',
+    'SRSE',
+    'SRTO',
+    'GERAL']
 }
 
 @app.get("/")

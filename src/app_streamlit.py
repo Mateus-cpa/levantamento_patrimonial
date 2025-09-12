@@ -22,7 +22,7 @@ def get_users_from_env():
 
 API_URL = "http://127.0.0.1:8000"
 
-st.title("Levantamento Patrimonial")
+st.title("Aplicativo de invnentário patrimonial")
 
 st.header("Credenciamento")
 #reiniciar st.session_state
@@ -44,8 +44,7 @@ else:
         username = st.selectbox("Usuário", options=['Selecione um usuário'] + users)
         #password = st.text_input("Senha", type="password")
         if username != 'Selecione um usuário':
-            st.session_state.is_authenticated = True
-            st.session_state.username = st.session_state.username
+            st.session_state.username = username
 
         # Se o usuário estiver autenticado, mostre o conteúdo protegido
         st.success(f"Bem-vindo, {st.session_state.username}!")
@@ -58,10 +57,22 @@ else:
             ug_response.raise_for_status()
             ugs_data = ug_response.json()
             ugs_list = ugs_data.get("ugs", [])
-            st.session_state.selected_ug = st.selectbox("Selecione a UG para o levantamento:", options=['Selecione uma UG'] + ugs_list)
-            if st.session_state.selected_ug != 'Selecione uma UG':
+            selected_ug = st.selectbox("Selecione a UG para o levantamento:", options=['Selecione uma UG'] + ugs_list)
+            if selected_ug != 'Selecione uma UG':
+                st.session_state.selected_ug = selected_ug
+                st.session_state.is_authenticated = True
                 #ir para app_levantamento.py
-                st.switch_page('pages/app_levantamento.py')
+                col1, col2 = st.columns(2)
+                with col1:
+                    botao_levantamento = st.button("Ir para Levantamento")
+                    if botao_levantamento:
+                        st.switch_page("pages/app_levantamento.py")
+                with col2:
+                    if st.session_state.username == 'admin':
+                        botao_atualizar = st.button("Ir para Atualizar Base")
+                        if botao_atualizar:
+                            st.switch_page("pages/app_atualizar_base.py")
+
 
         except requests.exceptions.RequestException as e:
             st.error(f"Erro ao buscar as UGs: {e}")

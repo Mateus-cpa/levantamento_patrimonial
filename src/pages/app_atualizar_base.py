@@ -109,7 +109,8 @@ def processa_planilha(df):
        'zoom otico', 'nivel de protecao da placa', 'tipo do monitor',
         'carga.1',	'classe',	'portas',	'tanque',	'velocidade',
         'volume', 'bitola do pneu', 'numero do registro', 'qtde de canais',
-        'nome da embarcacao', 'numero de registro','tipo de veiculo.1']
+        'nome da embarcacao', 'numero de registro','tipo de veiculo.1', 
+        'descritor especial', 'temporario', 'Unnamed: 137']
     existing_especificacoes_cols = [col for col in cols_to_check if col in df.columns]
     #resultados['existing_especificacoes_cols'] = [existing_especificacoes_cols]
 
@@ -226,14 +227,14 @@ def processa_planilha(df):
     localidades = df['localidade'].unique()
     localidades = pd.Series(localidades, name='localidade')
     pd.concat([localidades,pd.Series(['Nova localidade'])])
-    localidades.to_csv('data_bronze/localidades.csv', index=False, header=False)
+    localidades.to_csv(f'data_silver/localidades_{st.session_state.selected_ug}.csv', index=False, header=False)
 
     #concatenar textos das colunas de características [denominacao, especificações, marca_total, modelo_total, serie_total] em uma coluna
     df['caracteristicas'] = df[['denominacao', 'especificacao', 'marca_total', 'modelo_total']].agg(' '.join, axis=1)
     # remover dados repetidos e salvar csv como lista
     caracteristicas = df['caracteristicas'].unique().tolist()
     caracteristicas = pd.Series(caracteristicas, name='caracteristicas')
-    caracteristicas.to_csv('data_bronze/caracteristicas.csv', index=False, header=False)
+    caracteristicas.to_csv(f'data_silver/caracteristicas_{st.session_state.selected_ug}.csv', index=False, header=False)
 
     #trnasforma valores numéricos em float -> '.' => ''' e ',' => '.'
     colunas_valores = ['valor', 'valor entrada', 'valor acumulado', 'valor depreciacao acumulada']
@@ -243,7 +244,7 @@ def processa_planilha(df):
     
     return df
 
-def salva_estatisticas_levantamento(df, nome_base="historico_levantamento"):
+def salva_estatisticas_levantamento(df, nome_base=f"historico_levantamento_{st.session_state.selected_ug}"):
     """
     Salva o histórico de levantamento em um arquivo JSON por dia.
 
@@ -264,7 +265,7 @@ def salva_estatisticas_levantamento(df, nome_base="historico_levantamento"):
 
     # 2. Filtrar por ano de levantamento no ano atual
     df_levantamento_atual = df_ativos[df_ativos['ano do levantamento'] == ano_atual].copy()
-    print(f"Quantidade de bens levantados no ano atual: {df_levantamento_atual.shape[0]}")
+    st.write(f"Quantidade de bens levantados no ano atual: {df_levantamento_atual.shape[0]}")
 
     # 3. Agrupar a quantidade levantada no ano atual por unidade (qtde_levantado)
     df_levantamento_atual = df_levantamento_atual.groupby(['sigla']).size().reset_index(name='qtde_levantado').set_index('sigla')
@@ -279,21 +280,21 @@ def salva_estatisticas_levantamento(df, nome_base="historico_levantamento"):
     # salvar histórico de levantamento em json ou csv
     if not df_levantamento_atual.empty:
         os.makedirs('data_silver', exist_ok=True)
-        df_final.to_json(f'data_silver/{nome_arquivo}', orient='index', indent=4)
-        print(f"Dados do levantamento de {df_final.columns[0]} salvos em {nome_arquivo}")
+        df_final.to_json(f'data_silver/{st.session_state.selected_ug}_{nome_arquivo}', orient='index', indent=4)
+        st.write(f"Dados do levantamento de {df_final.columns[0]} salvos em {nome_arquivo}")
     else:
-        print(f"Não há dados para salvar para {df_final.columns[0]}.")
+        st.write(f"Não há dados para salvar para {df_final.columns[0]}.")
     pass
 
 def salva_dataframe(df_processado):
     df_processado.to_csv(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv')
     df_processado.to_json(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.json', orient='records', lines=True)
     df_processado.to_excel(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.xlsx', engine='openpyxl')
-    with open('data_bronze/resultados.json', 'r') as f:
+    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'r') as f:
         resultados = json.load(f)
-    resultados['tamanho_final_csv_mb'] = pega_tamanho_em_mb(caminho=f'.data/lista_bens-processado-{st.session_state.selected_ug}.csv')
-    resultados['tamanho_final_json_mb'] = pega_tamanho_em_mb(caminho=f'.data/lista_bens-processado-{st.session_state.selected_ug}.json')
-    resultados['tamanho_final_xlsx_mb'] = pega_tamanho_em_mb(caminho=f'.data/lista_bens-processado-{st.session_state.selected_ug}.xlsx')
+    resultados['tamanho_final_csv_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv')
+    resultados['tamanho_final_json_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.json')
+    resultados['tamanho_final_xlsx_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.xlsx')
     resultados['data_processamento'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with open('data_bronze/resultados.json', 'w') as f:
         json.dump(resultados, f, indent=4)
@@ -336,25 +337,38 @@ def atualiza_base_dados():
     'GERAL']
 
     
-    st.title("Carregue o arquivo Excel")
+    if 'selected_ug' not in st.session_state or st.session_state.selected_ug not in lista_ugs:
+        st.warning("Por favor, selecione uma UG válida na página de credenciamento.")
+        #mostrar variáveis em session_state
+        return
+    
+    st.title(f"Carregue o arquivo Excel da UG {st.session_state.selected_ug} para atualizar a base de dados")
     excel = st.file_uploader("Escolha o arquivo Excel", type=["xlsx"], key="file_uploader")
     CAMINHO = '.data/excel.xlsx'
-    # salva arquivo em /data
+    progresso = st.progress(0)
     if excel:
         with open(CAMINHO, 'wb') as f:
             f.write(excel.getbuffer())
         st.write('Lendo arquivo Excel...')
+        progresso.progress(25)
         df_lista_materiais = ler_arquivo_xlsx_com_progresso(caminho=CAMINHO)
+        progresso.progress(50)
         st.write('Processando planilha...')
         df_processado = processa_planilha(df_lista_materiais)
+        progresso.progress(70)
         st.write('Salvando estatísticas de levantamento...')
+        progresso.progress(80)
         salva_estatisticas_levantamento(df_processado)
         st.write('Salvando planilha processada...')
+        progresso.progress(90)
         salva_dataframe(df_processado)
-        if len(df_processado.columns) != 45:
+        if len(df_processado.columns) != 47:
             st.warning(f"qtde colunas: {len(df_processado.columns)}")
+            st.code(df_processado.columns.tolist())
         else:
             st.success(f"qtde colunas: {len(df_processado.columns)}")
+            st.balloons()
+        progresso.progress(100)
         st.write('Processamento concluído.')
 
 if __name__ == '__main__':
