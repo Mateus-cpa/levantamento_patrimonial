@@ -244,7 +244,7 @@ def processa_planilha(df):
     
     return df
 
-def salva_estatisticas_levantamento(df, nome_base=f"historico_levantamento_{st.session_state.selected_ug}"):
+def salva_estatisticas_levantamento(df, nome_base):
     """
     Salva o histórico de levantamento em um arquivo JSON por dia.
 
@@ -296,52 +296,11 @@ def salva_dataframe(df_processado):
     resultados['tamanho_final_json_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.json')
     resultados['tamanho_final_xlsx_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.xlsx')
     resultados['data_processamento'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    with open('data_bronze/resultados.json', 'w') as f:
+    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'w') as f:
         json.dump(resultados, f, indent=4)
 
-def atualiza_base_dados():
-    # upload de arquivo
-    lista_ugs = [
-    'SRAC',
-    'SRAL',
-    'SRAP',
-    'SRAM',
-    'SRBA',
-    'SRCE',
-    'CGAD',
-    'SRDF',
-    'DITEC',
-    'DIREN',
-    'DTI',
-    'SRES',
-    'FIG',
-    'SRGO',
-    'SRMA',
-    'SRMT',
-    'SRMS',
-    'SRMG',
-    'SRPA',
-    'SRPB',
-    'SRPR',
-    'SRPE',
-    'SRPI',
-    'SRRJ',
-    'SRRN',
-    'SRRS',
-    'SRRO',
-    'SRRR',
-    'SRSC',
-    'SRSP',
-    'SRSE',
-    'SRTO',
-    'GERAL']
 
-    
-    if 'selected_ug' not in st.session_state or st.session_state.selected_ug not in lista_ugs:
-        st.warning("Por favor, selecione uma UG válida na página de credenciamento.")
-        #mostrar variáveis em session_state
-        return
-    
+if 'selected_ug' in st.session_state:
     st.title(f"Carregue o arquivo Excel da UG {st.session_state.selected_ug} para atualizar a base de dados")
     excel = st.file_uploader("Escolha o arquivo Excel", type=["xlsx"], key="file_uploader")
     CAMINHO = '.data/excel.xlsx'
@@ -358,7 +317,7 @@ def atualiza_base_dados():
         progresso.progress(70)
         st.write('Salvando estatísticas de levantamento...')
         progresso.progress(80)
-        salva_estatisticas_levantamento(df_processado)
+        salva_estatisticas_levantamento(df=df_processado, nome_base=f'estatisticas_levantamento_{st.session_state.selected_ug}')
         st.write('Salvando planilha processada...')
         progresso.progress(90)
         salva_dataframe(df_processado)
@@ -371,5 +330,6 @@ def atualiza_base_dados():
         progresso.progress(100)
         st.write('Processamento concluído.')
 
-if __name__ == '__main__':
-    atualiza_base_dados()
+else:
+    st.warning("Por favor, selecione uma UG válida na página de credenciamento.")
+    st.stop()
