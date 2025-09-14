@@ -20,6 +20,18 @@ def get_users_from_env():
             return []
     return []
 
+def menu_navegacao():
+    col1, col2 = st.columns(2)
+    with col1:
+        botao_levantamento = st.button("Ir para Levantamento")
+        if botao_levantamento:
+            st.switch_page(f"pages/app_levantamento.py")
+    with col2:
+        if st.session_state.username == 'admin':
+            botao_atualizar = st.button("Ir para Atualizar Base")
+            if botao_atualizar:
+                st.switch_page(f"pages/app_atualizar_base.py")
+
 API_URL = "http://127.0.0.1:8000"
 
 st.title("Aplicativo de invnentário patrimonial")
@@ -30,7 +42,7 @@ st.button("Reiniciar Sessão", on_click=lambda: st.session_state.clear())
 
 
 # A lista de usuários é carregada uma vez no início
-users = ['Selecione um usuário', 'miguel.mpf', 'pericles.pd', 'getulio.gbs', 'admin']
+users = ['Selecione um usuário', 'miguel.mpf', 'pericles.pd', 'getulio.gbs', 'mateus.mcpa', 'admin']
 if not users:
     st.warning("Nenhum usuário encontrado na variável de ambiente USERS. Verifique seu arquivo .env.")
 else:
@@ -41,14 +53,12 @@ else:
 
     if not st.session_state.is_authenticated:
         # Se o usuário não estiver autenticado, mostre o formulário de login
-        username = st.selectbox("Usuário", options=['Selecione um usuário'] + users)
+        username = st.selectbox("Usuário", options= users)
         #password = st.text_input("Senha", type="password")
         if username != 'Selecione um usuário':
             st.session_state.username = username
 
-        # Se o usuário estiver autenticado, mostre o conteúdo protegido
-        st.success(f"Bem-vindo, {st.session_state.username}!")
-        
+                
         try:
             ug_response = requests.get(
                 f"{API_URL}/user_ugs",
@@ -61,23 +71,14 @@ else:
             if selected_ug != 'Selecione uma UG':
                 st.session_state.selected_ug = selected_ug
                 st.session_state.is_authenticated = True
-                #ir para app_levantamento.py
-                col1, col2 = st.columns(2)
-                with col1:
-                    botao_levantamento = st.button("Ir para Levantamento")
-                    if botao_levantamento:
-                        st.switch_page("pages/app_levantamento.py")
-                with col2:
-                    if st.session_state.username == 'admin':
-                        botao_atualizar = st.button("Ir para Atualizar Base")
-                        if botao_atualizar:
-                            st.switch_page("pages/app_atualizar_base.py")
+                menu_navegacao()
 
 
         except requests.exceptions.RequestException as e:
             st.error(f"Erro ao buscar as UGs: {e}")
-            
-        st.button("Sair", on_click=lambda: (
-            st.session_state.update(is_authenticated=False, username=None),
-            st.experimental_rerun()
-        ))
+                
+    else:
+        st.success(f"Usuário '{st.session_state.username}' autenticado com UG {st.session_state.selected_ug}.")
+        menu_navegacao()
+
+        

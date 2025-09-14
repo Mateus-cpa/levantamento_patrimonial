@@ -6,6 +6,8 @@ import json
 from datetime import datetime
 import streamlit as st
 
+from pages.app_status_levantamento import pagina_principal
+
 
 def pega_tamanho_em_mb(caminho: str):
     return os.path.getsize(caminho) / (1024 * 1024)
@@ -16,7 +18,7 @@ def ler_arquivo_xlsx_com_progresso(caminho: str):
     resultados['tamanho_inicial_mb'] = tamanho_inicial
     if not os.path.exists('data_bronze'):
         os.makedirs('data_bronze')
-    with open('data_bronze/resultados.json', 'w') as f:
+    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'w') as f:
         json.dump(resultados, f, indent=4)
     
     # Inicializa o progresso
@@ -46,7 +48,7 @@ def repor_virgula_por_ponto(valor):
     return valor
 
 def processa_planilha(df):    
-    with open('data_bronze/resultados.json', 'r') as f:
+    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'r') as f:
         resultados = json.load(f)
     
     resultados['qtde_colunas_inicial'] = df.shape[1]
@@ -64,7 +66,8 @@ def processa_planilha(df):
     #resultados['colunas_existentes_numeros_serie'] = [existing_serie_cols]
 
     #checar se colunas de modelo existem na planilha
-    cols_to_check = ['modelo', 'modelo  ', 'modelo    ', 'modelo1', 'modelo.1']
+    cols_to_check = ['modelo', 'modelo  ', 'modelo    ', 'modelo1', 'modelo.1', 
+                     'modelo ']  #adicionado DITEC13-09-2025
     existing_modelo_cols = [col for col in cols_to_check if col in df.columns]
     #resultados['existing_modelo_cols'] = [existing_modelo_cols]
     
@@ -110,7 +113,13 @@ def processa_planilha(df):
         'carga.1',	'classe',	'portas',	'tanque',	'velocidade',
         'volume', 'bitola do pneu', 'numero do registro', 'qtde de canais',
         'nome da embarcacao', 'numero de registro','tipo de veiculo.1', 
-        'descritor especial', 'temporario', 'Unnamed: 137']
+        'descritor especial', 'temporario', 'Unnamed: 137', 
+        'referencia do cartucho','versao', #adicionado DITEC 13-09-2025
+        'aplicacao.2', 'material de fabricacao','peso.1',#adicionado DITEC 13-09-2025
+        'potencia.1','tamanho da maleta','velocidade de impressao',#adicionado DITEC 13-09-2025
+        'voltagem.1','Unnamed: 174', #adicionado DITEC 13-09-2025
+        'Unnamed: 148' #Adicionado SRRJ 13-09-2025
+        ]
     existing_especificacoes_cols = [col for col in cols_to_check if col in df.columns]
     #resultados['existing_especificacoes_cols'] = [existing_especificacoes_cols]
 
@@ -197,8 +206,8 @@ def processa_planilha(df):
     # salvar dados em resultados
     resultados['qtde_colunas_final'] = df.shape[1]
     resultados['qtde_de_linhas_final'] = df.shape[0]
-    with open('data_bronze/resultados.json', 'w') as f:
-        json.dump(resultados, f, indent=4) 
+    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'w') as f:
+        json.dump(resultados, f, indent=4)
 
     #trazer o tombo novo para a 1ª coluna (para o PROCV do excel)
     df = df.reindex(columns=['num tombamento'] + [col for col in df.columns if col != 'num tombamento'])
@@ -230,7 +239,7 @@ def processa_planilha(df):
     localidades.to_csv(f'data_silver/localidades_{st.session_state.selected_ug}.csv', index=False, header=False)
 
     #concatenar textos das colunas de características [denominacao, especificações, marca_total, modelo_total, serie_total] em uma coluna
-    df['caracteristicas'] = df[['denominacao', 'especificacao', 'marca_total', 'modelo_total']].agg(' '.join, axis=1)
+    df['caracteristicas'] = df[['denominacao', 'especificacao', 'marca_total', 'modelo_total']].astype(str).agg(' '.join, axis=1)
     # remover dados repetidos e salvar csv como lista
     caracteristicas = df['caracteristicas'].unique().tolist()
     caracteristicas = pd.Series(caracteristicas, name='caracteristicas')
@@ -300,6 +309,34 @@ def salva_dataframe(df_processado):
         json.dump(resultados, f, indent=4)
 
 
+def corrige_colunas_parametros(df):
+    colunas_referencia = ['num tombamento', 'unidade responsavel material', 'codigo', #1-3
+                          'grupo de material', 'codigo material', 'subgrupo de material', #4-6
+                          'descricao material', 'n de serie', 'numero de serie', #7-9
+                          'acautelado para', 'matricula detentor', 'validado eletron', #10-12
+                          'data assinatura', 'lotacao detentor', 'data acautelamento', #13-15
+                          'data cadastro', 'denominacao', 'especificacao', #16-18
+                          'observacao', 'anulado', 'estado bem', #19-21
+                          'status', 'bem terceiros', 'data balanco', #22-24
+                          'data inicio uso', 'ano balanco', 'garantia', #25-27
+                          'data fabricacao', 'data validade', 'localidade', #28-30
+                          'ultimo levantamento', 'unidade tombamento', 'valor', #31-33
+                          'valor entrada', 'valor acumulado', 'depreciavel', #34-36
+                          'valor depreciacao acumulada', 'data ultimo ajuste', 'vida util', #37-39
+                          'vida util base depreciacao', 'data ultimo ajuste depreciacao', 'tipo bloqueio', #40-42
+                          'serie_total', 'modelo_total', 'especificacoes', #43-45
+                          'tombo_antigo', 'marca_total', 'sigla', #46-48
+                          'ano do levantamento', 'caracteristicas'] #49-51
+    colunas_df = df.columns.tolist()
+    colunas_excedentes = [col for col in colunas_df if col not in colunas_referencia]
+    dict_amostras = {}
+    for coluna in colunas_excedentes:
+        lista_coluna = df[coluna].dropna().unique().tolist()
+        dict_amostras[coluna] = lista_coluna
+    st.write(dict_amostras)
+
+
+
 if 'selected_ug' in st.session_state:
     st.title(f"Carregue o arquivo Excel da UG {st.session_state.selected_ug} para atualizar a base de dados")
     excel = st.file_uploader("Escolha o arquivo Excel", type=["xlsx"], key="file_uploader")
@@ -315,21 +352,30 @@ if 'selected_ug' in st.session_state:
         st.write('Processando planilha...')
         df_processado = processa_planilha(df_lista_materiais)
         progresso.progress(70)
-        st.write('Salvando estatísticas de levantamento...')
-        progresso.progress(80)
-        salva_estatisticas_levantamento(df=df_processado, nome_base=f'estatisticas_levantamento_{st.session_state.selected_ug}')
-        st.write('Salvando planilha processada...')
-        progresso.progress(90)
-        salva_dataframe(df_processado)
         if len(df_processado.columns) != 47:
             st.warning(f"qtde colunas: {len(df_processado.columns)}")
-            st.code(df_processado.columns.tolist())
-        else:
-            st.success(f"qtde colunas: {len(df_processado.columns)}")
-            st.balloons()
-        progresso.progress(100)
-        st.write('Processamento concluído.')
+            corrige_colunas_parametros(df_processado)
+            st.info("Verifique as colunas excedentes na planilha e ajuste o código conforme necessário.")
 
+        else:
+            st.write(f"qtde colunas: {len(df_processado.columns)}")
+            st.success('Processamento concluído.')
+            st.write('Salvando estatísticas de levantamento...')
+            progresso.progress(80)
+            salva_estatisticas_levantamento(df=df_processado, nome_base=f'estatisticas_levantamento_{st.session_state.selected_ug}')
+            st.write('Salvando planilha processada...')
+            progresso.progress(90)
+            salva_dataframe(df_processado)
+            progresso.progress(100)
+            st.success('Planilha processada e salva com sucesso!')
+            st.balloons()
+            pagina_principal()
+            botao_finalizar = st.button("Finalizar")
+            if botao_finalizar:
+                st.session_state.pop('selected_ug', None)
+                st.switch_page('Credenciamento')
+            
+            
 else:
     st.warning("Por favor, selecione uma UG válida na página de credenciamento.")
     st.stop()
