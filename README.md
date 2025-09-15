@@ -21,14 +21,3 @@ poetry run honcho start
 
 ```
 
-Ativa FastAPI
-```bash
-poetry run uvicorn src.main:app --reload
-
-```
-
-Executa Streamlit
-```bash
-poetry run streamlit run src/app_streamlit.py
-
- ```

@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 import streamlit as st
 
-from pages.app_status_levantamento import pagina_principal
+from pages.status_levantamento import pagina_principal
 
 
 def pega_tamanho_em_mb(caminho: str):

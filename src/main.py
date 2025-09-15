@@ -1,8 +1,6 @@
 from fastapi import FastAPI, Query
 from src.auth.credenciamento import router as auth_router
 from src.levantamento.levantamento import router as levantamento_router
-from pages.app_status_levantamento import router as status_router
-#from src.menu.menu_principal import router as menu_router #problema importação por causa de __pycache__
 
 app = FastAPI(
     title="Levantamento Patrimonial API",
@@ -65,6 +63,4 @@ def get_user_ugs(username: str = Query(...)):
     return {"ugs": ugs}
 
 app.include_router(auth_router)
-#app.include_router(menu_router)
-app.include_router(status_router)
 app.include_router(levantamento_router)

@@ -3,6 +3,16 @@ import requests
 import os
 import json
 from utils.env_loader import get_users
+#from st_pages import Page, add_page_title, show_pages
+
+def configurar_pagina():
+    st.set_page_config(
+        page_title='Menu Principal',
+        page_icon='🏠',
+        layout='wide')
+
+
+
 
 def get_users_from_env():
     """
@@ -26,19 +36,22 @@ def menu_navegacao():
     with col1:
         botao_levantamento = st.button("Levantamento")
         if botao_levantamento:
-            st.switch_page(f"pages/app_levantamento.py")
+            st.switch_page(f"pages/levantamento.py")
     with col2:
         if os.path.exists(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv'):
             botao_status = st.button("Status do Levantamento")
             if botao_status:
-                st.switch_page(f"pages/app_status_levantamento.py")
+                st.switch_page(f"pages/status_levantamento.py")
     with col3:
         if st.session_state.username == 'admin':
             botao_atualizar = st.button("Atualizar Base")
             if botao_atualizar:
-                st.switch_page(f"pages/app_atualizar_base.py")
+                st.switch_page(f"pages/atualizar_base.py")
 
 # -- TELA PRINCIPAL --
+# Configuração da página
+configurar_pagina()
+
 API_URL = "http://127.0.0.1:8000"
 
 st.session_state.lista_todas_ugs = [
@@ -78,25 +91,23 @@ else:
         #password = st.text_input("Senha", type="password")
         if username != 'Selecione um usuário':
             st.session_state.username = username
-
-                
-        try:
-            ug_response = requests.get(
-                f"{API_URL}/user_ugs",
-                params={"username": username}
-            )
-            ug_response.raise_for_status()
-            ugs_data = ug_response.json()
-            ugs_list = ugs_data.get("ugs", [])
-            selected_ug = st.selectbox("Selecione a UG para o levantamento:", options=['Selecione uma UG'] + ugs_list)
-            if selected_ug != 'Selecione uma UG':
-                st.session_state.selected_ug = selected_ug
-                st.session_state.is_authenticated = True
-                menu_navegacao()
+            try:
+                ug_response = requests.get(
+                    f"{API_URL}/user_ugs",
+                    params={"username": st.session_state.username}
+                )
+                ug_response.raise_for_status()
+                ugs_data = ug_response.json()
+                ugs_list = ugs_data.get("ugs", [])
+                selected_ug = st.selectbox("Selecione a UG para o levantamento:", options=['Selecione uma UG'] + ugs_list)
+                if selected_ug != 'Selecione uma UG':
+                    st.session_state.selected_ug = selected_ug
+                    st.session_state.is_authenticated = True
+                    menu_navegacao()
 
 
-        except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao buscar as UGs: {e}")
+            except requests.exceptions.RequestException as e:
+                 st.error(f"Erro ao buscar as UGs: {e}")
                 
     else:
         st.success(f"Usuário '{st.session_state.username}' autenticado com UG {st.session_state.selected_ug}.")

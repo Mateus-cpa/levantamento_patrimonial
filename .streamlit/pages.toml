@@ -1,0 +1,19 @@
+[[pages]]
+path = "src/menu_principal.py"
+name = "Levantamento Patrimonial"
+icon = "📋" # Você pode usar um emoji ou um ícone do Streamlit, como :clipboard:
+
+[[pages]]
+path = "src/pages/levantamento.py"
+name = "Levantamento"
+icon = "📝"
+
+[[pages]]
+path = "src/pages/status_levantamento.py"
+name = "Status do Levantamento"
+icon = "📊"
+
+[[pages]]
+path = "src/pages/atualizar_base.py"
+name = "Atualizar Base"
+icon = "🔄"

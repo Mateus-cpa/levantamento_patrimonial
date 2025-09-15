@@ -5,9 +5,9 @@ import json
 import os
 
 def retornar():
-    botao_credenciamento = st.button('Ir para Credenciamento', use_container_width=True)
+    botao_credenciamento = st.button('Ir para Credenciamento', use_container_width=True, key='botao_credenciamento')
     if botao_credenciamento:
-        st.switch_page('app_streamlit.py')
+        st.switch_page('menu_principal.py')
 
 def trocar_ug():
     if st.session_state.username == 'admin':
@@ -125,7 +125,7 @@ def pagina_principal():
                 col2.metric('Mediana', round(df[coluna].median(),2))
                 col2.metric('Média', round(df[coluna].mean(),2))
                 col3.metric('Máximo', round(df[coluna].max(),2))
-            retornar()
+            
         else:
             st.warning('Base de dados ainda não processada.')
             
