@@ -341,7 +341,12 @@ def corrige_colunas_parametros(df):
 
 
 if 'selected_ug' in st.session_state:
-    st.title(f"Carregue o arquivo Excel da UG {st.session_state.selected_ug} para atualizar a base de dados")
+    if st.session_state.username != 'admin':
+        st.warning("Acesso negado. Apenas o usuário 'admin' pode acessar esta página.")
+        st.stop()
+    
+    st.header(f"Atualizar Base de Dados - UG {st.session_state.selected_ug}")
+    st.subheader(f"Carregue o arquivo Excel para atualizar a base de dados")
     excel = st.file_uploader("Escolha o arquivo Excel", type=["xlsx"], key="file_uploader")
     CAMINHO = '.data/excel.xlsx'
     progresso = st.progress(0)
