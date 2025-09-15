@@ -7,8 +7,14 @@ import os
 def retornar():
     botao_credenciamento = st.button('Ir para Credenciamento', use_container_width=True)
     if botao_credenciamento:
-        st.session_state.pop('selected_ug', None)
-        st.switch_page('src/app_streamlit')
+        st.switch_page('app_streamlit.py')
+
+def trocar_ug():
+    if st.session_state.username == 'admin':
+        botao_trocar_ug = st.button('Trocar UG', use_container_width=True)
+        if botao_trocar_ug:
+            st.session_state.selected_ug = st.selectbox("Trocar UG:", options=['Selecione uma UG'] + st.session_state.lista_todas_ugs)
+
 
 def pagina_principal():
     """Configura as propriedades da página no Streamlit."""
@@ -19,6 +25,7 @@ def pagina_principal():
     retornar()
     
     if 'selected_ug' in st.session_state:
+        trocar_ug()
         if os.path.exists(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv'):
             st.title(f'Status da base da UG {st.session_state.selected_ug}')
             df = pd.read_csv(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv', dtype=str)

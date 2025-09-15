@@ -21,20 +21,41 @@ def get_users_from_env():
     return []
 
 def menu_navegacao():
-    col1, col2 = st.columns(2)
+    st.subheader('## Ir para:')
+    col1, col2, col3 = st.columns(3)
     with col1:
-        botao_levantamento = st.button("Ir para Levantamento")
+        botao_levantamento = st.button("Levantamento")
         if botao_levantamento:
             st.switch_page(f"pages/app_levantamento.py")
     with col2:
+        if os.path.exists(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv'):
+            botao_status = st.button("Status do Levantamento")
+            if botao_status:
+                st.switch_page(f"pages/app_status_levantamento.py")
+    with col3:
         if st.session_state.username == 'admin':
-            botao_atualizar = st.button("Ir para Atualizar Base")
+            botao_atualizar = st.button("Atualizar Base")
             if botao_atualizar:
                 st.switch_page(f"pages/app_atualizar_base.py")
 
+# -- TELA PRINCIPAL --
 API_URL = "http://127.0.0.1:8000"
 
-st.title("Aplicativo de invnentário patrimonial")
+st.session_state.lista_todas_ugs = [
+                                    'CGAD','DITEC','DIREN','DTI',
+                                    'FIG',
+                                    'SRAC', 'SRAL', 'SRAP',
+                                    'SRAM', 'SRBA', 'SRCE',
+                                    'SRDF','SRES','SRGO',
+                                    'SRMA','SRMT','SRMS',
+                                    'SRMG','SRPA','SRPB',
+                                    'SRPR','SRPE','SRPI',
+                                    'SRRJ','SRRN','SRRS',
+                                    'SRRO','SRRR','SRSC',
+                                    'SRSP','SRSE','SRTO',
+                                    'GERAL']
+
+st.title("Aplicativo de inventário patrimonial")
 
 st.header("Credenciamento")
 #reiniciar st.session_state

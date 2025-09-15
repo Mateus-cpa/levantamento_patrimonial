@@ -117,9 +117,12 @@ def processa_planilha(df):
         'referencia do cartucho','versao', #adicionado DITEC 13-09-2025
         'aplicacao.2', 'material de fabricacao','peso.1',#adicionado DITEC 13-09-2025
         'potencia.1','tamanho da maleta','velocidade de impressao',#adicionado DITEC 13-09-2025
-        'voltagem.1','Unnamed: 174', #adicionado DITEC 13-09-2025
-        'Unnamed: 148' #Adicionado SRRJ 13-09-2025
+        'voltagem.1' #adicionado DITEC 13-09-2025
         ]
+    # adicionar a cols_to_check quaisquer colunas que comecem com Unnamed
+    for col in df.columns:
+        if col.startswith('Unnamed'):
+            cols_to_check.append(col)
     existing_especificacoes_cols = [col for col in cols_to_check if col in df.columns]
     #resultados['existing_especificacoes_cols'] = [existing_especificacoes_cols]
 
