@@ -1,13 +1,12 @@
 import streamlit as st #type: ignore[import]
 import pandas as pd #type: ignore[import]
 import datetime as dt
-from menu import ler_base_processada
-import src.levantamento.gerar_etiqueta as etiq
+import levantamento.gerar_etiqueta as etiq
 import os
 
 #Funções auxiliares
 def obter_localidades():
-    localidades = pd.read_csv("data_bronze/localidades.csv").values.tolist()
+    localidades = pd.read_csv(f"data_silver/localidades_{st.session_state.selected_ug}.csv").values.tolist()
     return localidades
 
 def adicionar_ao_inventario(id = int):
@@ -34,12 +33,31 @@ def escolhe_dentre_resultados(df, index):
     Args:
         index: Lista de índices dos resultados encontrados.
     """
-    st.write("**Mais de um patrimônio encontrado. Selecione o desejado:** ")
+    #lista de ano do levantamento
+    #lista_anos = df['ano do levantamento'].unique().dropna().sort().tolist()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        filtro_ativos = col1.button('Selecionar somente os bens ativos')
+        if filtro_ativos:
+            df = df[df['status'].isin(['EFETIVADO','ACAUTELADO','BEM NÃO LOCALIZADO','EM PROCESSO DE ALIENAÇÃO'])]
+    with col2:
+        st.write(f"**{len(df)} resultados encontrados:**")
     for index, row in df.iterrows():
-        if st.checkbox(f"{row['status']} - {row['num tombamento']} - {row['denominacao']} - {row['marca_total']} - {row['modelo_total']} - {row['serie_total']} - {row['localidade']} - {row['acautelado para']} - {row['ultimo levantamento']}",
-                       key=f"select_{index}"):
-            adicionar_ao_inventario(int(row['num tombamento']))
-            # Adiciona apenas um patrimônio por vez
+        # 1. os demais casos
+        if (row['status'] not in ['ALIENADO', 'ANULADO', 'DESMEMBRADO']) and (row['ano do levantamento'] != dt.date.today().year): #status em verde
+            if st.checkbox(f"{row['status']} - {row['num tombamento']} - {row['denominacao']} - {row['marca_total']} - {row['modelo_total']} - {row['serie_total']} - {row['localidade']} - {row['acautelado para']} - {row['ultimo levantamento']}",
+                        key=f"select_{index}"):
+                adicionar_ao_inventario(int(row['num tombamento']))
+        # 2. os já inventariados em laranja
+        elif (row['ano do levantamento'] == dt.date.today().year): 
+            st.markdown(f"{row['status']} - {row['num tombamento']} - {row['denominacao']} - {row['marca_total']} - {row['modelo_total']} - {row['serie_total']} - {row['localidade']} - {row['acautelado para']} - <span style='color:orange'>{row['ultimo levantamento']}</span>", unsafe_allow_html=True)
+            if st.checkbox(f"Adicionar {row['num tombamento']} já inventariado ao inventário?", key=f"select_{index}"):
+                adicionar_ao_inventario(int(row['num tombamento']))
+        # 3. os alienados em vermelho
+        else: 
+            st.markdown(f"<span style='color:red'>{row['status']}</span> - {row['num tombamento']} - {row['denominacao']} - {row['marca_total']} - {row['modelo_total']} - {row['serie_total']} - {row['localidade']} - {row['acautelado para']} - {row['ultimo levantamento']}", unsafe_allow_html=True)
+        st.divider()
 
     return index
 
@@ -165,7 +183,7 @@ def tela_input_dados(df):
     else:
         # -- configurações iniciais --
         colunas_de_interesse = ['denominacao', 'status', 'marca_total', 'modelo_total', 'serie_total', 'localidade','acautelado para', 'tombo_antigo', 'ultimo levantamento', 'valor','especificacoes','num tombamento']
-        st.title("Levantamento Patrimonial")
+        st.title("Levantamento Patrimonial - " + st.session_state.selected_ug)
         if 'inventario' not in st.session_state:
             st.session_state['inventario'] = []
         if 'gerar_etiquetas' not in st.session_state:
@@ -183,9 +201,12 @@ def tela_input_dados(df):
                 localidade_escolhida = st.selectbox("Localidade", localidades, key="localidade_escolha")
             
             if localidade == 'Adicionar localidade':
-                localidade_escolhida = st.text_input("Nova Localidade", key="nova_localidade")
+                col1, col2 = st.columns(2)
+                unidade_patrimonial = col1.text_input("Unidade Patrimonial", key="unidade_patrimonial")
+                localidade_escolhida = col2.text_input("Localidade", key="localidade_nova")
+                localidade_escolhida = f'{unidade_patrimonial} - {localidade_escolhida}'
+            
             st.session_state['localidade_selecionada'] = localidade_escolhida
-        
             st.session_state['acompanhamento'] = st.text_input("Acompanhamento inventário")
             
         
@@ -204,16 +225,42 @@ def tela_input_dados(df):
             detentor = st.selectbox("Adicionar bens de detentor", df['acautelado para'].unique(), key="detentor")
             index_cautela = df[df['acautelado para'] == detentor].index.tolist()
         if busca == 'Características':
-            caracteristicas = st.selectbox("Buscar por características",df['caracteristicas'].unique(), key="caracteristicas", index=0)
-            if caracteristicas == '':
-                caracteristicas = None
-            else:
-                caracteristicas = [caracteristicas]
-            if caracteristicas:
-                index_caracteristicas = df[df['caracteristicas'].str.contains(caracteristicas[0], case=False)].index.tolist()
-        else:
-            index_caracteristicas = []
+            st.info('Digite "Não informado" para buscar por itens sem essa característica.')
+            col1, col2 = st.columns(2)
+            with col1:
+                grupo = st.selectbox("Grupo de material",['Escolha um grupo'] + df['grupo de material'].fillna('Não informado').dropna().unique().tolist(), key="grupo")
+                if grupo != 'Escolha um grupo':
+                    df = df[df['grupo de material'].str.contains(grupo, case=False)]
+            with col2:
+                subgrupo = st.selectbox("Subgrupo de material",['Escolha um subgrupo'] + df['subgrupo de material'].fillna('').dropna().unique().tolist(), 
+                                        accept_new_options=True,
+                                        key="subgrupo", 
+                                        index=0)
+                if subgrupo != 'Escolha um subgrupo':
+                    df = df[df['subgrupo de material'].str.contains(subgrupo, case=False)]
+            with col1:
+                marca = st.selectbox("Marca",['Escolha uma marca'] + df['marca_total'].fillna('Não informado').dropna().unique().tolist(), 
+                                     accept_new_options=True,
+                                     key="marca", 
+                                     index=0)
+                if marca != 'Escolha uma marca':
+                    df = df[df['marca_total'].str.contains(marca, case=False, na=False)]
+            with col2:
+                modelo = st.selectbox("Modelo",['Escolha um modelo'] + df['modelo_total'].fillna('Não informado').dropna().unique().tolist(), 
+                                      accept_new_options=True,
+                                      key="modelo", 
+                                      index=0)
+                if modelo != 'Escolha um modelo':
+                    df = df[df['modelo_total'].str.contains(modelo, case=False, na=False)]
 
+            caracteristicas = st.selectbox("Características",
+                                           ['Escolha uma característica'] + df['caracteristicas'].dropna().unique().tolist(), 
+                                            accept_new_options=True,
+                                            key="caracteristicas", 
+                                            index=0)
+            if caracteristicas != 'Escolha uma característica':
+                index_caracteristicas = df[df['caracteristicas'].str.contains(caracteristicas[0], case=False)].index.tolist()
+        
         # -- Resultados de busca -- 
         st.subheader("Resultados da Busca")
         resultados_busca = None
@@ -308,9 +355,18 @@ def tela_input_dados(df):
         
         
     
+#configurar página wide
+st.set_page_config(
+    page_title='Levantamento Patrimonial',
+    page_icon='📝',
+    layout='wide')
 
-if __name__ == "__main__":
-    CAMINHO_ARQ_PROCESSADO = 'data_bronze/lista_bens-processado.csv'
-    df= ler_base_processada(CAMINHO_ARQ_PROCESSADO)
+CAMINHO_ARQ_PROCESSADO = f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv'
+if st.session_state.is_authenticated == False:
+    st.warning("Por favor, faça o login na página inicial.")
+elif not os.path.exists(CAMINHO_ARQ_PROCESSADO):
+    st.warning(f"Por favor, solicite ao administrador atualizar base de dados da UG {st.session_state.selected_ug}.")
+else:
+    df = pd.read_csv(CAMINHO_ARQ_PROCESSADO)
     tela_input_dados(df)
     # A autenticação deve ser implementada antes de chamar a função de input de dados

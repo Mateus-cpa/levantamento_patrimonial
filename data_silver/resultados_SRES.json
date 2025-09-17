@@ -1,0 +1,11 @@
+{
+    "tamanho_inicial_mb": 3.196992874145508,
+    "qtde_colunas_inicial": 45,
+    "qtde_de_linhas_inicial": 15596,
+    "qtde_colunas_final": 45,
+    "qtde_de_linhas_final": 15596,
+    "tamanho_final_csv_mb": 10.15514850616455,
+    "tamanho_final_json_mb": 24.21935749053955,
+    "tamanho_final_xlsx_mb": 3.2809410095214844,
+    "data_processamento": "2025-09-15 08:35:51"
+}
