@@ -316,6 +316,8 @@ def tela_input_dados(df):
         # -- Seção bens a inventariar --
         df_localidade = df[df['localidade'].isin(list(localidade_escolhida))]
         df_localidade.set_index('num tombamento', inplace=True,drop=False)
+        # excluir bens alienados, anulados ou desmembrados
+        df_localidade = df_localidade[~df_localidade['status'].isin(['ALIENADO', 'ANULADO', 'DESMEMBRADO'])]
         #excluir os bens que já foram inventariados
         df_localidade = df_localidade[df_localidade['num tombamento'].isin(st.session_state['inventario']) == False]
         st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state['localidade_selecionada']}")    
