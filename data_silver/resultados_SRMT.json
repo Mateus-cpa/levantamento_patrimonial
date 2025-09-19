@@ -3,5 +3,9 @@
     "qtde_colunas_inicial": 45,
     "qtde_de_linhas_inicial": 22019,
     "qtde_colunas_final": 45,
-    "qtde_de_linhas_final": 22019
+    "qtde_de_linhas_final": 22019,
+    "tamanho_final_csv_mb": 13.61521053314209,
+    "tamanho_final_json_mb": 33.38454723358154,
+    "tamanho_final_xlsx_mb": 4.469383239746094,
+    "data_processamento": "2025-09-18 07:46:37"
 }
