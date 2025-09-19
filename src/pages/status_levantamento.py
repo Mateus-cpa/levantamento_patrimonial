@@ -50,13 +50,16 @@ def pagina_principal():
                 df = df[df['status'].isin(filtro_status)]
 
             # -- LEVANTAMENTO --
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             qtd_bens = df.shape[0]
             ano_atual = str(datetime.today().year)
             qtd_inventariados = len(df[df['ano do levantamento'] == ano_atual])
             col1.metric('Qtde. de bens', qtd_bens)
-            col2.metric('Total inventariados', qtd_inventariados)
-            col3.metric('Perc. Inventariados', f'{round(qtd_inventariados/qtd_bens*100,2)}%')
+            col2.metric('',None)
+            col1.metric('Total inventariados', qtd_inventariados)
+            col2.metric('Perc. Inventariado', f'{round(qtd_inventariados/qtd_bens*100,2)}%')
+            col1.metric('Total não inventariados', qtd_bens-qtd_inventariados)
+            col2.metric('Perc. não Inventariado', f'{round((1-qtd_inventariados/qtd_bens)*100,2)}%')
 
             # Levantamento por último ano
             st.subheader('Quantidade de bens pelo último ano de levantamento')
