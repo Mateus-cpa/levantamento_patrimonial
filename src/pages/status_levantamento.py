@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import matplotlib.pyplot as plt  # criar gráficos como imagem
-#import seaborn as sns
+import seaborn as sns
 
 
 def retornar():
@@ -31,6 +31,7 @@ def pagina_principal():
     
     if 'selected_ug' in st.session_state:
         trocar_ug()
+        # CARGA DE ARQUIVO CSV  
         if os.path.exists(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv'):
             st.title(f'Status do levantamento da UG {st.session_state.selected_ug}')
             df = pd.read_csv(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv', dtype=str)
@@ -57,12 +58,68 @@ def pagina_principal():
             col2.metric('Total inventariados', qtd_inventariados)
             col3.metric('Perc. Inventariados', f'{round(qtd_inventariados/qtd_bens*100,2)}%')
 
+            # Levantamento por último ano
+            st.subheader('Quantidade de bens pelo último ano de levantamento')
+            histograma_levantamento = df.groupby('ano do levantamento')['ano do levantamento'].count()
+            #plotar histograma
+            with sns.axes_style('whitegrid'):
+                grafico = histograma_levantamento.plot(kind='bar', 
+                                                       title=f'Quantidade de bens ativos pelo último ano de inventário ({st.session_state.selected_ug})')
+                grafico.set_xlabel('Ano do último levantamento')
+                grafico.set_ylabel('Quantidade de bens ativos')
+                grafico.set_xticklabels(grafico.get_xticklabels(), rotation=45)
+            for i, v in enumerate(histograma_levantamento):
+                grafico.text(i, v, str(v), ha='center', va='bottom')
+            st.pyplot(grafico.figure, use_container_width=True)
+            st.write("Levantamentos com último ano 2010 são aqueles nunca levantados")
+
             # Levantamento por subgrupo (por unidade)
             # quantidade
             # valor
             
             # Levantamento por unidade (por subgrupo)
-            # quantidade
+            # Calcular a contagem para cada setor e ano
+            st.subheader('Quantidade de bens levantados por Unidade')
+            contagem = df.groupby(['sigla', 'ano do levantamento']).size().unstack()
+
+            # calcular soma da quantidade de bens ativos de cada linha
+            contagem['soma'] = contagem.sum(axis=1).fillna(0).astype(int)
+
+            # calcular percentual de 'ano levantamento' = 2024 em relação ao total
+            contagem['percentual'] = contagem[ano_atual]/contagem['soma']
+            contagem['percentual'] = contagem['percentual'].mul(100).round(1).fillna(0)
+
+            #transformar em string
+
+            contagem['soma'] = contagem['soma'].astype(str)
+            contagem['percentual'] = contagem['percentual'].astype(str)
+
+            contagem['sigla'] = contagem.index.get_level_values('sigla')
+            contagem['sigla'] = contagem['sigla'] + ' (' + contagem['soma'].astype(str) + ' / ' + contagem['percentual'].astype(str) + '%)'
+
+            contagem = contagem.drop(columns=['percentual'])
+
+            #somar os valores de todas colunas de cada linhas, exceto coluna sigla
+            colunas_numericas = contagem.select_dtypes(include=['float64', 'int64']).columns
+
+            contagem['total'] = contagem[colunas_numericas].sum(axis=1)
+
+            #ordenar por total
+            contagem = contagem.sort_values(by='total', ascending=False)
+            contagem = contagem.drop(columns=['total'])
+
+            st.write('**Legenda:** Unidade (Quantidade total de bens / percentual inventariado)')
+            # Plotar o gráfico de barras empilhadas
+            grafico_contagem = contagem.plot(kind='barh',
+                                            x = 'sigla',
+                                            stacked=True,
+                                            title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.selected_ug}',
+                                            colormap = 'RdBu')
+            grafico_contagem.set_ylabel('Setor (% levantado)')
+            grafico_contagem.set_xlabel('Quantidade de bens ativos')
+            grafico_contagem.set_xticklabels(grafico_contagem.get_xticklabels(), rotation=45)
+            grafico_contagem.figure.set_size_inches(20, 15)
+            st.pyplot(grafico_contagem.figure, use_container_width=True)
             # valor
 
             # Levantamento por localidade, se undiade selecionada
