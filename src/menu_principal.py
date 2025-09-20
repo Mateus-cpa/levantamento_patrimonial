@@ -53,7 +53,7 @@ def menu_navegacao():
 # Configuração da página
 configurar_pagina()
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://levantamento-patrimonial-api.onrender.com"
 
 st.session_state.lista_todas_ugs = [
                                     'CGAD','DITEC','DIREN','DTI',
