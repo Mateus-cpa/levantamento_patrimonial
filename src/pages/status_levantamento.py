@@ -160,7 +160,6 @@ def pagina_principal():
             contagem_grupo['total'] = contagem_grupo[colunas_numericas].sum(axis=1)
             contagem_grupo = contagem_grupo.sort_values(by='total', ascending=False)
             contagem_grupo = contagem_grupo.drop(columns=['total'])
-            st.dataframe(contagem_grupo)
             st.write('**Legenda:** Unidade (Quantidade total de bens / percentual inventariado)')
             # Plotar o gráfico de barras empilhadas
             if not filtro_grupo:
@@ -198,14 +197,13 @@ def pagina_principal():
             plt.clf()
             grafico_status = df_status.plot(kind='pie',
                                             title = f'Quantidade de bens por Status ({st.session_state.titulo_grafico})',
-                                            legend = True,
                                             #labels= None, # nomes no gráfico
                                             autopct= lambda p: '{:.2f}%({:.0f})'.format(p,(p/100)*df.status.count()),
-                                            figsize=(10,10)
+                                            figsize=(8,8)
                                             )
-            grafico_status.legend(loc="center left", bbox_to_anchor = (1, 0.5))
+            #grafico_status.legend(loc="center left", bbox_to_anchor = (1, 0.5))
             plt.tight_layout()
-            st.pyplot(grafico_status.figure, width='stretch')
+            st.pyplot(grafico_status.figure)
 
             # BENS ACAUTELADOS
             st.subheader('Assinatura de bens acautelados')
@@ -219,7 +217,7 @@ def pagina_principal():
                                                             autopct= lambda p: '{:.2f}%({:.0f})'.format(p,(p/100)*bens_acautelados.sum(),),
                                                             figsize=(10,10))
             plt.tight_layout()
-            st.pyplot(grafico_bens_acautelados.figure, width='stretch')
+            st.pyplot(grafico_bens_acautelados.figure)
 
             # VALORES NULOS
             df_null = df.isnull().sum()/len(df)*100
@@ -238,21 +236,6 @@ def pagina_principal():
             st.divider()
 
             
-           
-            #boxplot de valor_atual_tratado por sigla
-            st.subheader('Boxplot de valor atual tratado por grupo de material')
-            df_boxplot = df[['grupo de material','valor']].dropna()
-            df_boxplot['valor_atual_tratado'] = df_boxplot['valor'].astype(float)
-            grafico_boxplot = alt.Chart(df_boxplot).mark_boxplot().encode(
-                y=alt.Y('grupo de material', sort='-x'),
-                x='valor',
-                #tooltip=None
-            ).properties(
-                width=700,
-                height=400
-            )
-            st.altair_chart(grafico_boxplot)
-
             # Dados estatísticos por coluna
             st.subheader('Filtrar colunas')
             coluna = st.selectbox('Selecione a coluna', df.columns)
@@ -273,7 +256,7 @@ def pagina_principal():
             st.divider()    
 
 
-            #compara tamanho em MB de planilha data e data_bronze
+            # -- TAMANHOS DE ARQUIVO --
             st.subheader('Comparativo de arquivos iniciais e finais')
             dict_resultados = json.load(open(f'data_silver/resultados_{st.session_state.selected_ug}.json'))
             
@@ -289,8 +272,26 @@ def pagina_principal():
                         f"{round((dict_resultados['tamanho_final_xlsx_mb'] - dict_resultados['tamanho_inicial_mb'])/dict_resultados['tamanho_inicial_mb']*100,2)}%",
                         delta_color='inverse')
 
-            col2.metric('Quantidade de colunas iniciais', dict_resultados['qtde_colunas_inicial'])    
-            col3.metric('Quantidade de colunas finais', dict_resultados['qtde_colunas_final'],
+            st.subheader('Compara tamanhos de arquivos em mb')
+            fig, ax = plt.subplots(figsize=(10, 6))
+            tamanhos_arquivo = [dict_resultados['tamanho_inicial_mb'], 
+                                dict_resultados['tamanho_final_csv_mb'],
+                                dict_resultados['tamanho_final_json_mb'],
+                                dict_resultados['tamanho_final_xlsx_mb']]
+            labels = ['Original (xlsx)', 'Depois (csv)', 'Depois (json)', 'Depois (xlsx)']
+            ax.bar(labels, tamanhos_arquivo)
+            ax.set_xlabel('Formato do Arquivo')
+            ax.set_ylabel('Tamanho do Arquivo (MB)')
+            ax.set_title(f'Tamanho do Arquivo antes e depois do processamento ({st.session_state.selected_ug})')
+            for i, tamanho in enumerate(tamanhos_arquivo):
+                ax.text(i, tamanho + 0.5, f'{tamanho:.2f} MB', ha='center', va='bottom')
+            st.pyplot(fig, width='stretch')
+
+            # -- QUANTIDADES DE COLUNA --
+            st.subheader('Quntidade de colunas')
+            col_inicial, col_final = st.columns(2)
+            col_inicial.metric('Quantidade inicial', dict_resultados['qtde_colunas_inicial'])    
+            col_final.metric('Quantidade final', dict_resultados['qtde_colunas_final'],
                         f"{round((dict_resultados['qtde_colunas_final'] - dict_resultados['qtde_colunas_inicial'])/dict_resultados['qtde_colunas_inicial']*100,2)}%",
                         delta_color='inverse')
 

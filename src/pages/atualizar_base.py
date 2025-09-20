@@ -6,20 +6,15 @@ import json
 from datetime import datetime
 import streamlit as st
 
-from pages.status_levantamento import pagina_principal
-
 
 def pega_tamanho_em_mb(caminho: str):
     return os.path.getsize(caminho) / (1024 * 1024)
 
 def ler_arquivo_xlsx_com_progresso(caminho: str):
-    resultados = {}
+    st.session_state.resultados = {}
     tamanho_inicial = pega_tamanho_em_mb(caminho)
-    resultados['tamanho_inicial_mb'] = tamanho_inicial
-    if not os.path.exists('data_bronze'):
-        os.makedirs('data_bronze')
-    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'w') as f:
-        json.dump(resultados, f, indent=4)
+    st.session_state.resultados['tamanho_inicial_mb'] = tamanho_inicial
+    
     
     # Inicializa o progresso
     tqdm.pandas(desc="Lendo arquivo Excel")
@@ -48,11 +43,8 @@ def repor_virgula_por_ponto(valor):
     return valor
 
 def processa_planilha(df):    
-    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'r') as f:
-        resultados = json.load(f)
-    
-    resultados['qtde_colunas_inicial'] = df.shape[1]
-    resultados['qtde_de_linhas_inicial'] = df.shape[0]
+    st.session_state.resultados['qtde_colunas_inicial'] = df.shape[1]
+    st.session_state.resultados['qtde_de_linhas_inicial'] = df.shape[0]
 
     #checar se colunas de números de série existem na planilha
     cols_to_check = ['imei','n de serie', 'numero de serie',
@@ -63,24 +55,20 @@ def processa_planilha(df):
                   'n  serie.1', 'numero de serie.3','numero serie',
                  'numero de serie.4']
     existing_serie_cols = [col for col in cols_to_check if col in df.columns]
-    #resultados['colunas_existentes_numeros_serie'] = [existing_serie_cols]
-
+    
     #checar se colunas de modelo existem na planilha
     cols_to_check = ['modelo', 'modelo  ', 'modelo    ', 'modelo1', 'modelo.1', 
                      'modelo ']  #adicionado DITEC13-09-2025
     existing_modelo_cols = [col for col in cols_to_check if col in df.columns]
-    #resultados['existing_modelo_cols'] = [existing_modelo_cols]
     
     # checar se colunas de marca existem na planilha
     cols_to_check = ['marca','marca.1', 'marca1']
     existing_marca_cols = [col for col in cols_to_check if col in df.columns]
-    #resultados['existing_marca_cols'] = [existing_marca_cols]
     
     #checar se colunas de tombo antigo existem na planilha
     cols_to_check = ['tombo antigo', 'tombo antigo.1']
     existing_tombo_antigo_cols = [col for col in cols_to_check if col in df.columns]
-    #resultados['existing_tombo_antigo_cols'] = [existing_tombo_antigo_cols]
-
+    
     # checar se colunas de especificações na planilha
     cols_to_check = ['observacao bloqueio', 'matriz', 'qtd de rodas',
        'acabamento da estrutura', 'altura', 'ano de fabricacao',
@@ -124,7 +112,7 @@ def processa_planilha(df):
         if col.startswith('Unnamed'):
             cols_to_check.append(col)
     existing_especificacoes_cols = [col for col in cols_to_check if col in df.columns]
-    #resultados['existing_especificacoes_cols'] = [existing_especificacoes_cols]
+    
 
     # criar coluna de serie que compilará os demais números de série
     df['serie_total'] = None
@@ -132,8 +120,6 @@ def processa_planilha(df):
     df['especificacoes'] = None
     df['tombo_antigo'] = None
     df['marca_total'] = None
-
-    #lista_colunas_exibir = ['denominacao','serie_total', 'modelo_total', 'tombo_antigo', 'marca_total', 'especificacoes']
 
     #define as funções
     def create_especificacoes(row):
@@ -207,11 +193,9 @@ def processa_planilha(df):
    
     
     # salvar dados em resultados
-    resultados['qtde_colunas_final'] = df.shape[1]
-    resultados['qtde_de_linhas_final'] = df.shape[0]
-    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'w') as f:
-        json.dump(resultados, f, indent=4)
-
+    st.session_state.resultados['qtde_colunas_final'] = df.shape[1]
+    st.session_state.resultados['qtde_de_linhas_final'] = df.shape[0]
+    
     #trazer o tombo novo para a 1ª coluna (para o PROCV do excel)
     df = df.reindex(columns=['num tombamento'] + [col for col in df.columns if col != 'num tombamento'])
     
@@ -307,19 +291,16 @@ def salva_dataframe(df_processado):
     # Lendo, atualizando e salvando o arquivo JSON de resultados
     caminho_resultados = f'data_silver/resultados_{st.session_state.selected_ug}.json'
     
-    # Lendo o arquivo existente
-    with open(caminho_resultados, 'r') as f:
-        resultados = json.load(f)
-
+    
     # Adicionando os novos dados de tamanho e data
-    resultados['tamanho_final_csv_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv')
-    resultados['tamanho_final_json_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.json')
-    resultados['tamanho_final_xlsx_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.xlsx')
-    resultados['data_processamento'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    st.session_state.resultados['tamanho_final_csv_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv')
+    st.session_state.resultados['tamanho_final_json_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.json')
+    st.session_state.resultados['tamanho_final_xlsx_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.xlsx')
+    st.session_state.resultados['data_processamento'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # Escrevendo o objeto completo de volta no arquivo
     with open(caminho_resultados, 'w') as f:
-        json.dump(resultados, f, indent=4)
+        json.dump(st.session_state.resultados, f, indent=4)
 
 
 def corrige_colunas_parametros(df):
@@ -349,49 +330,53 @@ def corrige_colunas_parametros(df):
     st.write(dict_amostras)
 
 
-
-if 'selected_ug' in st.session_state:
-    if st.session_state.username != 'admin':
-        st.warning("Acesso negado. Apenas o usuário 'admin' pode acessar esta página.")
-        st.stop()
-    
-    st.header(f"Atualizar Base de Dados - UG {st.session_state.selected_ug}")
-    st.subheader(f"Carregue o arquivo Excel para atualizar a base de dados")
-    excel = st.file_uploader("Escolha o arquivo Excel", type=["xlsx"], key="file_uploader")
-    CAMINHO = '.data/excel.xlsx'
-    progresso = st.progress(0)
-    if excel:
-        with open(CAMINHO, 'wb') as f:
-            f.write(excel.getbuffer())
-        st.write('Lendo arquivo Excel...')
-        progresso.progress(25)
-        df_lista_materiais = ler_arquivo_xlsx_com_progresso(caminho=CAMINHO)
-        progresso.progress(50)
-        st.write('Processando planilha...')
-        df_processado = processa_planilha(df_lista_materiais)
-        progresso.progress(70)
-        if len(df_processado.columns) != 47:
-            st.warning(f"qtde colunas: {len(df_processado.columns)}")
-            corrige_colunas_parametros(df_processado)
-            st.info("Verifique as colunas excedentes na planilha e ajuste o código conforme necessário.")
-
+def atualizacao():
+    if 'selected_ug' in st.session_state:
+        if st.session_state.username != 'admin':
+            st.warning("Acesso negado. Apenas o usuário 'admin' pode acessar esta página.")
+            st.stop()
         else:
-            st.write(f"qtde colunas: {len(df_processado.columns)}")
-            st.success('Processamento concluído.')
-            st.write('Salvando estatísticas de levantamento...')
-            progresso.progress(80)
-            salva_estatisticas_levantamento(df=df_processado, nome_base=f'estatisticas_levantamento_{st.session_state.selected_ug}')
-            st.write('Salvando planilha processada...')
-            progresso.progress(90)
-            salva_dataframe(df_processado)
-            progresso.progress(100)
-            st.success('Planilha processada e salva com sucesso!')
-            st.balloons()
-            botao_finalizar = st.button("Finalizar")
-            if botao_finalizar:
-                pagina_principal()
-            
-            
-else:
-    st.warning("Por favor, selecione uma UG válida na página de credenciamento.")
-    st.stop()
+            st.header(f"Atualizar Base de Dados - UG {st.session_state.selected_ug}")
+            st.subheader(f"Carregue o arquivo Excel para atualizar a base de dados")
+            excel = st.file_uploader("Escolha o arquivo Excel", type=["xlsx"], key="file_uploader")
+            CAMINHO = '.data/excel.xlsx'
+            progresso = st.progress(0)
+            if excel:
+                with open(CAMINHO, 'wb') as f:
+                    f.write(excel.getbuffer())
+                st.write('Lendo arquivo Excel...')
+                progresso.progress(25)
+                df_lista_materiais = ler_arquivo_xlsx_com_progresso(caminho=CAMINHO)
+                progresso.progress(50)
+                st.write('Processando planilha...')
+                df_processado = processa_planilha(df_lista_materiais)
+                progresso.progress(70)
+                if len(df_processado.columns) != 47:
+                    st.warning(f"qtde colunas: {len(df_processado.columns)}")
+                    corrige_colunas_parametros(df_processado)
+                    st.info("Verifique as colunas excedentes na planilha e ajuste o código conforme necessário.")
+
+                else:
+                    st.write(f"qtde colunas: {len(df_processado.columns)}")
+                    st.success('Processamento concluído.')
+                    st.write('Salvando estatísticas de levantamento...')
+                    progresso.progress(80)
+                    salva_estatisticas_levantamento(df=df_processado, nome_base=f'estatisticas_levantamento_{st.session_state.selected_ug}')
+                    st.write('Salvando planilha processada...')
+                    progresso.progress(90)
+                    salva_dataframe(df_processado)
+                    progresso.progress(100)
+                    st.success('Planilha processada e salva com sucesso!')
+                    st.balloons()
+                    botao_finalizar = st.button("Finalizar")
+                    if botao_finalizar:
+                        st.switch_page('pages/status_levantamento.py')
+                        excel= None
+
+                
+                
+    else:
+        st.warning("Por favor, selecione uma UG válida na página de credenciamento.")
+        st.stop()
+
+atualizacao()

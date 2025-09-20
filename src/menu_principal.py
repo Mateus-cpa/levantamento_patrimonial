@@ -10,6 +10,7 @@ def configurar_pagina():
         page_title='Menu Principal',
         page_icon='🏠',
         layout='wide')
+    st.session_state.is_authenticated = False
 
 
 
