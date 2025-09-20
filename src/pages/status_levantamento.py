@@ -52,7 +52,8 @@ def pagina_principal():
             st.session_state.titulo_grafico = st.session_state.selected_ug
             if filtro_grupo:
                 df = df[df['grupo de material'].isin(filtro_grupo)]
-                st.session_state.titulo_grafico = filtro_grupo
+                titulo_grupo = df['grupo de material'].unique()[0]
+                st.session_state.titulo_grafico = titulo_grupo
             filtro_unidade = col_unidade.multiselect('Filtro por unidade patrimonial', df['unidade responsavel material'].unique())
             if filtro_unidade:
                 df = df[df['unidade responsavel material'].isin(filtro_unidade)]
@@ -87,61 +88,104 @@ def pagina_principal():
             st.pyplot(grafico.figure, width='stretch')
             st.warning("Levantamentos com último ano 2010 são aqueles nunca levantados")
 
-            # Levantamento por grupo (por unidade)
             
-
-            # por valor
-            
-            # Levantamento por unidade
+            # POR UNDIADE / LOCALIDADE
             if not filtro_unidade:
                 st.subheader('Quantidade de bens levantados por Unidade')
-                contagem = df.groupby(['sigla', 'ano do levantamento']).size().unstack()
+                contagem_unidade = df.groupby(['sigla', 'ano do levantamento']).size().unstack()
             else:
                 st.subheader('Quantidade de bens levantados por Localidade')
-                contagem = df.groupby(['localidade', 'ano do levantamento']).size().unstack()
-            contagem['soma'] = contagem.sum(axis=1).fillna(0).astype(int)
-            contagem['percentual'] = contagem[ano_atual]/contagem['soma']
-            contagem['percentual'] = contagem['percentual'].mul(100).round(1).fillna(0)
-            contagem['soma'] = contagem['soma'].astype(str)
-            contagem['percentual'] = contagem['percentual'].astype(str)
+                contagem_unidade = df.groupby(['localidade', 'ano do levantamento']).size().unstack()
+            contagem_unidade['soma'] = contagem_unidade.sum(axis=1).fillna(0).astype(int)
+            contagem_unidade['percentual'] = contagem_unidade[ano_atual]/contagem_unidade['soma']
+            contagem_unidade['percentual'] = contagem_unidade['percentual'].mul(100).round(1).fillna(0)
+            contagem_unidade['soma'] = contagem_unidade['soma'].astype(str)
+            contagem_unidade['percentual'] = contagem_unidade['percentual'].astype(str)
             if not filtro_unidade:
-                contagem['sigla'] = contagem.index.get_level_values('sigla')
-                contagem['sigla'] = contagem['sigla'] + ' (' + contagem['soma'].astype(str) + ' / ' + contagem['percentual'].astype(str) + '%)'
+                contagem_unidade['sigla'] = contagem_unidade.index.get_level_values('sigla')
+                contagem_unidade['sigla'] = contagem_unidade['sigla'] + ' (' + contagem_unidade['soma'].astype(str) + ' / ' + contagem_unidade['percentual'].astype(str) + '%)'
             else:
-                contagem['localidade'] = contagem.index.get_level_values('localidade')
-                contagem['localidade'] = contagem['localidade'] + ' (' + contagem['soma'].astype(str) + ' / ' + contagem['percentual'].astype(str) + '%)'
-            contagem = contagem.drop(columns=['percentual'])
-            colunas_numericas = contagem.select_dtypes(include=['float64', 'int64']).columns
-            contagem['total'] = contagem[colunas_numericas].sum(axis=1)
-            contagem = contagem.sort_values(by='total', ascending=False)
-            contagem = contagem.drop(columns=['total'])
+                contagem_unidade['localidade'] = contagem_unidade.index.get_level_values('localidade')
+                contagem_unidade['localidade'] = contagem_unidade['localidade'] + ' (' + contagem_unidade['soma'].astype(str) + ' / ' + contagem_unidade['percentual'].astype(str) + '%)'
+            contagem_unidade = contagem_unidade.drop(columns=['percentual'])
+            colunas_numericas = contagem_unidade.select_dtypes(include=['float64', 'int64']).columns
+            contagem_unidade['total'] = contagem_unidade[colunas_numericas].sum(axis=1)
+            contagem_unidade = contagem_unidade.sort_values(by='total', ascending=False)
+            contagem_unidade = contagem_unidade.drop(columns=['total'])
             st.write('**Legenda:** Unidade (Quantidade total de bens / percentual inventariado)')
             # Plotar o gráfico de barras empilhadas
             if not filtro_unidade:
-                grafico_contagem = contagem.plot(kind='barh',
+                grafico_contagem_unidade = contagem_unidade.plot(kind='barh',
                                                 x = 'sigla',
                                                 stacked=True,
                                                 title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.titulo_grafico}',
                                                 colormap = 'RdBu')
             else:
-                grafico_contagem = contagem.plot(kind='barh',
+                grafico_contagem_unidade = contagem_unidade.plot(kind='barh',
                                                 x = 'localidade',
                                                 stacked=True,
                                                 title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.titulo_grafico}',
                                                 colormap = 'RdBu')
                 
-            grafico_contagem.set_ylabel('Setor (% levantado)')
-            grafico_contagem.set_xlabel('Quantidade de bens ativos')
-            grafico_contagem.set_xticklabels(grafico_contagem.get_xticklabels(), rotation=45)
-            grafico_contagem.figure.set_size_inches(15, 10)
-            st.pyplot(grafico_contagem.figure)
+            grafico_contagem_unidade.set_ylabel('Setor (% levantado)')
+            grafico_contagem_unidade.set_xlabel('Quantidade de bens ativos')
+            grafico_contagem_unidade.set_xticklabels(grafico_contagem_unidade.get_xticklabels(), rotation=45)
+            grafico_contagem_unidade.figure.set_size_inches(15, 10)
+            st.pyplot(grafico_contagem_unidade.figure)
             st.warning("Levantamentos com último ano 2010 são aqueles nunca levantados")
 
 
             # gráfico por valor
-            # quantidade
-            # valor
             
+            # POR GRUPO DE MATERIAL / SUBGRUPO
+            if not filtro_grupo:
+                st.subheader('Quantidade de bens levantados por Grupo de Material')
+                contagem_grupo = df.groupby(['grupo de material', 'ano do levantamento']).size().unstack()
+            else:
+                st.subheader('Quantidade de bens levantados por Subgrupo de material')
+                contagem_grupo = df.groupby(['subgrupo de material', 'ano do levantamento']).size().unstack()
+            contagem_grupo['soma'] = contagem_grupo.sum(axis=1).fillna(0).astype(int)
+            contagem_grupo['percentual'] = contagem_grupo[ano_atual]/contagem_grupo['soma']
+            contagem_grupo['percentual'] = contagem_grupo['percentual'].mul(100).round(1).fillna(0)
+            contagem_grupo['soma'] = contagem_grupo['soma'].astype(str)
+            contagem_grupo['percentual'] = contagem_grupo['percentual'].astype(str)
+            if not filtro_grupo:
+                contagem_grupo['grupo de material'] = contagem_grupo.index.get_level_values('grupo de material')
+                contagem_grupo['grupo de material'] = contagem_grupo['grupo de material'] + ' (' + contagem_grupo['soma'].astype(str) + ' / ' + contagem_grupo['percentual'].astype(str) + '%)'
+            else:
+                contagem_grupo['subgrupo de material'] = contagem_grupo.index.get_level_values('subgrupo de material')
+                contagem_grupo['subgrupo de material'] = contagem_grupo['subgrupo de material'] + ' (' + contagem_grupo['soma'].astype(str) + ' / ' + contagem_grupo['percentual'].astype(str) + '%)'
+            contagem_grupo = contagem_grupo.drop(columns=['percentual'])
+            colunas_numericas = contagem_grupo.select_dtypes(include=['float64', 'int64']).columns
+            contagem_grupo['total'] = contagem_grupo[colunas_numericas].sum(axis=1)
+            contagem_grupo = contagem_grupo.sort_values(by='total', ascending=False)
+            contagem_grupo = contagem_grupo.drop(columns=['total'])
+            st.dataframe(contagem_grupo)
+            st.write('**Legenda:** Unidade (Quantidade total de bens / percentual inventariado)')
+            # Plotar o gráfico de barras empilhadas
+            if not filtro_grupo:
+                grafico_contagem_grupo = contagem_grupo.plot(kind='barh',
+                                                x = 'grupo de material',
+                                                stacked=True,
+                                                title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.titulo_grafico}',
+                                                colormap = 'RdBu')
+            else:
+                grafico_contagem_grupo = contagem_grupo.plot(kind='barh',
+                                                x = 'subgrupo de material',
+                                                stacked=True,
+                                                title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.titulo_grafico}',
+                                                colormap = 'RdBu')
+                
+            grafico_contagem_grupo.set_ylabel('Setor (% levantado)')
+            grafico_contagem_grupo.set_xlabel('Quantidade de bens ativos')
+            grafico_contagem_grupo.set_xticklabels(grafico_contagem_grupo.get_xticklabels(), rotation=45)
+            grafico_contagem_grupo.figure.set_size_inches(15, 10)
+            st.pyplot(grafico_contagem_grupo.figure)
+            st.warning("Levantamentos com último ano 2010 são aqueles nunca levantados")
+
+            # por valor
+
+
             st.dataframe(df)
             st.divider()
 
@@ -207,7 +251,7 @@ def pagina_principal():
                 width=700,
                 height=400
             )
-            st.altair_chart(grafico_boxplot, width='stretch')
+            st.altair_chart(grafico_boxplot)
 
             # Dados estatísticos por coluna
             st.subheader('Filtrar colunas')
