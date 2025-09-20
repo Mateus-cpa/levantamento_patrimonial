@@ -10,13 +10,13 @@ import seaborn as sns
 
 
 def retornar():
-    botao_credenciamento = st.button('Ir para Credenciamento', use_container_width=True, key='botao_credenciamento')
+    botao_credenciamento = st.button('Ir para Credenciamento', width='stretch', key='botao_credenciamento')
     if botao_credenciamento:
         st.switch_page('menu_principal.py')
 
 def trocar_ug():
     if st.session_state.username == 'admin':
-        botao_trocar_ug = st.button('Trocar UG', use_container_width=True)
+        botao_trocar_ug = st.button('Trocar UG', width='stretch')
         if botao_trocar_ug:
             st.session_state.selected_ug = st.selectbox("Trocar UG:", options=['Selecione uma UG'] + st.session_state.lista_todas_ugs)
 
@@ -36,7 +36,6 @@ def pagina_principal():
             st.title(f'Status do levantamento da UG {st.session_state.selected_ug}')
             df = pd.read_csv(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv', dtype=str)
             df = df[df['status'].isin(['EFETIVADO','ACAUTELADO','BEM NÃO LOCALIZADO','EM PROCESSO DE ALIENAÇÃO'])]
-            """Aplica filtro por status no DataFrame."""
             col1,col2,col3 = st.columns([0.25,0.25,0.5])
             todos_bens = col1.button('Todos bens')
             if todos_bens:
@@ -48,6 +47,18 @@ def pagina_principal():
                                              options=df['status'].unique())
             if filtro_status:
                 df = df[df['status'].isin(filtro_status)]
+            col_grupo, col_unidade = st.columns(2)
+            filtro_grupo = col_grupo.multiselect('Filtro por grupo de material',df['grupo de material'].unique())
+            st.session_state.titulo_grafico = st.session_state.selected_ug
+            if filtro_grupo:
+                df = df[df['grupo de material'].isin(filtro_grupo)]
+                st.session_state.titulo_grafico = filtro_grupo
+            filtro_unidade = col_unidade.multiselect('Filtro por unidade patrimonial', df['unidade responsavel material'].unique())
+            if filtro_unidade:
+                df = df[df['unidade responsavel material'].isin(filtro_unidade)]
+                titulo_sigla = df['sigla'].unique()[0]
+                st.session_state.titulo_grafico = titulo_sigla
+                
 
             # -- LEVANTAMENTO --
             col1, col2 = st.columns(2)
@@ -67,84 +78,90 @@ def pagina_principal():
             #plotar histograma
             with sns.axes_style('whitegrid'):
                 grafico = histograma_levantamento.plot(kind='bar', 
-                                                       title=f'Quantidade de bens ativos pelo último ano de inventário ({st.session_state.selected_ug})')
+                                                       title=f'Quantidade de bens ativos pelo último ano de inventário ({st.session_state.titulo_grafico})')
                 grafico.set_xlabel('Ano do último levantamento')
                 grafico.set_ylabel('Quantidade de bens ativos')
                 grafico.set_xticklabels(grafico.get_xticklabels(), rotation=45)
             for i, v in enumerate(histograma_levantamento):
                 grafico.text(i, v, str(v), ha='center', va='bottom')
-            st.pyplot(grafico.figure, use_container_width=True)
-            st.write("Levantamentos com último ano 2010 são aqueles nunca levantados")
+            st.pyplot(grafico.figure, width='stretch')
+            st.warning("Levantamentos com último ano 2010 são aqueles nunca levantados")
 
-            # Levantamento por subgrupo (por unidade)
-            # quantidade
-            # valor
+            # Levantamento por grupo (por unidade)
             
-            # Levantamento por unidade (por subgrupo)
-            # Calcular a contagem para cada setor e ano
-            st.subheader('Quantidade de bens levantados por Unidade')
-            contagem = df.groupby(['sigla', 'ano do levantamento']).size().unstack()
 
-            # calcular soma da quantidade de bens ativos de cada linha
+            # por valor
+            
+            # Levantamento por unidade
+            if not filtro_unidade:
+                st.subheader('Quantidade de bens levantados por Unidade')
+                contagem = df.groupby(['sigla', 'ano do levantamento']).size().unstack()
+            else:
+                st.subheader('Quantidade de bens levantados por Localidade')
+                contagem = df.groupby(['localidade', 'ano do levantamento']).size().unstack()
             contagem['soma'] = contagem.sum(axis=1).fillna(0).astype(int)
-
-            # calcular percentual de 'ano levantamento' = 2024 em relação ao total
             contagem['percentual'] = contagem[ano_atual]/contagem['soma']
             contagem['percentual'] = contagem['percentual'].mul(100).round(1).fillna(0)
-
-            #transformar em string
-
             contagem['soma'] = contagem['soma'].astype(str)
             contagem['percentual'] = contagem['percentual'].astype(str)
-
-            contagem['sigla'] = contagem.index.get_level_values('sigla')
-            contagem['sigla'] = contagem['sigla'] + ' (' + contagem['soma'].astype(str) + ' / ' + contagem['percentual'].astype(str) + '%)'
-
+            if not filtro_unidade:
+                contagem['sigla'] = contagem.index.get_level_values('sigla')
+                contagem['sigla'] = contagem['sigla'] + ' (' + contagem['soma'].astype(str) + ' / ' + contagem['percentual'].astype(str) + '%)'
+            else:
+                contagem['localidade'] = contagem.index.get_level_values('localidade')
+                contagem['localidade'] = contagem['localidade'] + ' (' + contagem['soma'].astype(str) + ' / ' + contagem['percentual'].astype(str) + '%)'
             contagem = contagem.drop(columns=['percentual'])
-
-            #somar os valores de todas colunas de cada linhas, exceto coluna sigla
             colunas_numericas = contagem.select_dtypes(include=['float64', 'int64']).columns
-
             contagem['total'] = contagem[colunas_numericas].sum(axis=1)
-
-            #ordenar por total
             contagem = contagem.sort_values(by='total', ascending=False)
             contagem = contagem.drop(columns=['total'])
-
             st.write('**Legenda:** Unidade (Quantidade total de bens / percentual inventariado)')
             # Plotar o gráfico de barras empilhadas
-            grafico_contagem = contagem.plot(kind='barh',
-                                            x = 'sigla',
-                                            stacked=True,
-                                            title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.selected_ug}',
-                                            colormap = 'RdBu')
+            if not filtro_unidade:
+                grafico_contagem = contagem.plot(kind='barh',
+                                                x = 'sigla',
+                                                stacked=True,
+                                                title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.titulo_grafico}',
+                                                colormap = 'RdBu')
+            else:
+                grafico_contagem = contagem.plot(kind='barh',
+                                                x = 'localidade',
+                                                stacked=True,
+                                                title=f'Bens ativos por setor e ano do último levantamento na {st.session_state.titulo_grafico}',
+                                                colormap = 'RdBu')
+                
             grafico_contagem.set_ylabel('Setor (% levantado)')
             grafico_contagem.set_xlabel('Quantidade de bens ativos')
             grafico_contagem.set_xticklabels(grafico_contagem.get_xticklabels(), rotation=45)
-            grafico_contagem.figure.set_size_inches(20, 15)
-            st.pyplot(grafico_contagem.figure, use_container_width=True)
-            # valor
+            grafico_contagem.figure.set_size_inches(15, 10)
+            st.pyplot(grafico_contagem.figure)
+            st.warning("Levantamentos com último ano 2010 são aqueles nunca levantados")
 
-            # Levantamento por localidade, se undiade selecionada
+
+            # gráfico por valor
             # quantidade
             # valor
             
+            st.dataframe(df)
+            st.divider()
+
             # -- STATUS BASE --
             st.title('Status da base de dados')
             
-            # gráfico quantidade por status
+            # QUANTIDADE POR STATUS
             st.subheader('Quantidade de bens por status')
             df_status = df['status'].groupby(df['status']).count()
             plt.clf()
             grafico_status = df_status.plot(kind='pie',
-                                            title = f'Quantidade de bens por Status ({st.session_state.selected_ug})',
+                                            title = f'Quantidade de bens por Status ({st.session_state.titulo_grafico})',
                                             legend = True,
                                             #labels= None, # nomes no gráfico
-                                            autopct= lambda p: '{:.2f}%({:.0f})'.format(p,(p/100)*df.status.count())
+                                            autopct= lambda p: '{:.2f}%({:.0f})'.format(p,(p/100)*df.status.count()),
+                                            figsize=(10,10)
                                             )
             grafico_status.legend(loc="center left", bbox_to_anchor = (1, 0.5))
             plt.tight_layout()
-            st.pyplot(grafico_status.figure, use_container_width=True)
+            st.pyplot(grafico_status.figure, width='stretch')
 
             # BENS ACAUTELADOS
             st.subheader('Assinatura de bens acautelados')
@@ -154,11 +171,11 @@ def pagina_principal():
             grafico_bens_acautelados = bens_acautelados.plot(kind='pie',
                                                              x = bens_acautelados.index,
                                                              y = bens_acautelados,
-                                                            title = f'Proporção de bens acautelados por validação de assinatura ({st.session_state.selected_ug})',
-                                                            autopct= lambda p: '{:.2f}%({:.0f})'.format(p,(p/100)*bens_acautelados.sum())
-            )
+                                                            title = f'Proporção de bens acautelados por validação de assinatura ({st.session_state.titulo_grafico})',
+                                                            autopct= lambda p: '{:.2f}%({:.0f})'.format(p,(p/100)*bens_acautelados.sum(),),
+                                                            figsize=(10,10))
             plt.tight_layout()
-            st.pyplot(grafico_bens_acautelados.figure, use_container_width=True)
+            st.pyplot(grafico_bens_acautelados.figure, width='stretch')
 
             # VALORES NULOS
             df_null = df.isnull().sum()/len(df)*100
@@ -172,7 +189,7 @@ def pagina_principal():
             grafico_colunas_vazias.bar_label(grafico_colunas_vazias.containers[0], fmt='%.2f%%')
             # Ajusta o layout para garantir que os rótulos não sejam cortados
             plt.tight_layout()
-            st.pyplot(grafico_colunas_vazias.figure, use_container_width=True)
+            st.pyplot(grafico_colunas_vazias.figure, width='stretch')
             
             st.divider()
 
@@ -190,7 +207,7 @@ def pagina_principal():
                 width=700,
                 height=400
             )
-            st.altair_chart(grafico_boxplot, use_container_width=True)
+            st.altair_chart(grafico_boxplot, width='stretch')
 
             # Dados estatísticos por coluna
             st.subheader('Filtrar colunas')
@@ -208,7 +225,6 @@ def pagina_principal():
                 col2.metric('Média', round(df[coluna].mean(),2))
                 col3.metric('Máximo', round(df[coluna].max(),2))
             
-            st.dataframe(df.sample(10))
 
             st.divider()    
 

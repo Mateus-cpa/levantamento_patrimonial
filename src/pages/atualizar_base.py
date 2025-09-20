@@ -299,16 +299,26 @@ def salva_estatisticas_levantamento(df, nome_base):
     pass
 
 def salva_dataframe(df_processado):
+    # Salvando os dataframes nos formatos finais
     df_processado.to_csv(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv')
     df_processado.to_json(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.json', orient='records', lines=True)
     df_processado.to_excel(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.xlsx', engine='openpyxl')
-    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'r') as f:
+
+    # Lendo, atualizando e salvando o arquivo JSON de resultados
+    caminho_resultados = f'data_silver/resultados_{st.session_state.selected_ug}.json'
+    
+    # Lendo o arquivo existente
+    with open(caminho_resultados, 'r') as f:
         resultados = json.load(f)
+
+    # Adicionando os novos dados de tamanho e data
     resultados['tamanho_final_csv_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv')
     resultados['tamanho_final_json_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.json')
     resultados['tamanho_final_xlsx_mb'] = pega_tamanho_em_mb(caminho=f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.xlsx')
     resultados['data_processamento'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    with open(f'data_silver/resultados_{st.session_state.selected_ug}.json', 'w') as f:
+
+    # Escrevendo o objeto completo de volta no arquivo
+    with open(caminho_resultados, 'w') as f:
         json.dump(resultados, f, indent=4)
 
 
@@ -377,11 +387,9 @@ if 'selected_ug' in st.session_state:
             progresso.progress(100)
             st.success('Planilha processada e salva com sucesso!')
             st.balloons()
-            pagina_principal()
             botao_finalizar = st.button("Finalizar")
             if botao_finalizar:
-                st.session_state.pop('selected_ug', None)
-                st.switch_page('Credenciamento')
+                pagina_principal()
             
             
 else:
