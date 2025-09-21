@@ -341,6 +341,12 @@ def atualizacao():
             excel = st.file_uploader("Escolha o arquivo Excel", type=["xlsx"], key="file_uploader")
             CAMINHO = '.data/excel.xlsx'
             progresso = st.progress(0)
+            
+            # Verifica se o diretório existe; se não, ele o cria
+            DIRETORIO = os.path.dirname(CAMINHO)
+            if not os.path.exists(DIRETORIO):
+                os.makedirs(DIRETORIO)
+                
             if excel:
                 with open(CAMINHO, 'wb') as f:
                     f.write(excel.getbuffer())
