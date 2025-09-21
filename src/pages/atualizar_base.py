@@ -346,6 +346,9 @@ def atualizacao():
             DIRETORIO = os.path.dirname(CAMINHO)
             if not os.path.exists(DIRETORIO):
                 os.makedirs(DIRETORIO)
+            
+            if not os.path.dirname('data_bronze'):
+                os.makedirs('data_bronze')
                 
             if excel:
                 with open(CAMINHO, 'wb') as f:
