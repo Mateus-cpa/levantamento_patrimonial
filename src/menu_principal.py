@@ -11,6 +11,8 @@ def configurar_pagina():
         page_icon='🏠',
         layout='wide')
     st.session_state.is_authenticated = False
+    st.session_state.selected_ug = None
+    st.session_state.username = None
 
 
 

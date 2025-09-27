@@ -10,8 +10,8 @@ import seaborn as sns
 
 
 def retornar():
-    botao_credenciamento = st.button('Ir para Credenciamento', width='stretch', key='botao_credenciamento')
-    if botao_credenciamento:
+    botao_retornar = st.button('Retornar para Credenciamento')
+    if botao_retornar:
         st.switch_page('menu_principal.py')
 
 def trocar_ug():
@@ -29,7 +29,7 @@ def pagina_principal():
         layout='wide')
     retornar()
     
-    if 'selected_ug' in st.session_state:
+    if ((st.session_state.selected_ug != None) or (st.session_state.username != None)):
         trocar_ug()
         # CARGA DE ARQUIVO CSV  
         if os.path.exists(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv'):
@@ -299,7 +299,7 @@ def pagina_principal():
             st.warning('Base de dados ainda não processada.')
             
     else:
-        st.warning('Por favor, selecione uma UG válida na página de credenciamento.')
+        st.warning('Por favor, faça o login na página inicial.')
     
 
 pagina_principal()
