@@ -1,5 +1,7 @@
 import json
 import os
+from typing import List, Optional
+
 
 from datetime import datetime
 import streamlit as st
@@ -19,6 +21,81 @@ def trocar_ug():
         botao_trocar_ug = st.button('Trocar UG', width='stretch')
         if botao_trocar_ug:
             st.session_state.selected_ug = st.selectbox("Trocar UG:", options=['Selecione uma UG'] + st.session_state.lista_todas_ugs)
+
+def buscar_e_ler_arquivos_json(caminho_pasta: str, padrao_inicio: str) -> Optional[pd.DataFrame]:
+    """
+    Busca arquivos .json na pasta que comecem com o padrão especificado, 
+    lê cada um em um DataFrame do Pandas e concatena todos.
+    
+    Args:
+        caminho_pasta: O caminho relativo ou absoluto da pasta.
+        padrao_inicio: O padrão de início do nome do arquivo.
+        
+    Returns:
+        Um DataFrame do Pandas combinado com os dados de todos os arquivos, 
+        ou None se nenhum arquivo for encontrado.
+    """
+    
+    arquivos_encontrados: List[str] = []
+    
+    # --- 2. Busca de Arquivos usando os ---
+    print(f"Buscando arquivos na pasta: {caminho_pasta}")
+    print(f"Padrão de início esperado: {padrao_inicio}*.json")
+    
+    try:
+        # 1. Listar todos os itens (arquivos e pastas) no diretório
+        for item in os.listdir(caminho_pasta):
+            caminho_completo = os.path.join(caminho_pasta, item)
+            
+            # 2. Filtrar para garantir que seja um arquivo
+            if os.path.isfile(caminho_completo):
+                
+                # 3. Filtrar pelo padrão de início e extensão .json
+                if item.startswith(padrao_inicio) and item.lower().endswith('.json'):
+                    arquivos_encontrados.append(caminho_completo)
+                    
+    except FileNotFoundError:
+        st.warning(f"ERRO: A pasta '{caminho_pasta}' não foi encontrada.")
+        return None
+    except Exception as e:
+        st.warning(f"Ocorreu um erro ao listar arquivos: {e}")
+        return None
+
+    if not arquivos_encontrados:
+        st.warning("Nenhum arquivo correspondente foi encontrado.")
+        return None
+
+    
+    # --- 3. Leitura e Concatenação dos Arquivos JSON ---
+    dataframes_concatenados = []
+    
+    for arquivo in arquivos_encontrados:
+        try:
+            # pd.read_json lê o arquivo JSON e o converte para um DataFrame
+            # O parâmetro 'lines=True' é útil se cada linha do JSON for um objeto JSON separado
+            # O parâmetro 'orient' pode precisar ser ajustado dependendo da estrutura do seu JSON
+            df = pd.read_json(arquivo).T
+            df['data_levantamento'] = arquivo.split('_')[5].split('.')[0]
+            df['data_levantamento'] = pd.to_datetime(df['data_levantamento'], format='%Y-%m-%d').dt.date
+            df['unidade'] = df.index
+            df.set_index('data_levantamento', drop=False, inplace=True)
+            df['perc_levantado'] = df['perc_levantado']*100
+
+            dataframes_concatenados.append(df)
+            
+        except ValueError as e:
+            st.warning(f"AVISO: Não foi possível ler o arquivo JSON '{arquivo}'. Erro: {e}")
+        except Exception as e:
+            st.warning(f"ERRO inesperado ao processar '{arquivo}': {e}")
+    
+    
+    if dataframes_concatenados:
+        df_final = pd.concat(dataframes_concatenados, ignore_index=True)
+        return df_final
+    else:
+        st.warning("Nenhum arquivo JSON válido foi lido para concatenação.")
+        return None
+
 
 
 def pagina_principal():
@@ -89,7 +166,7 @@ def pagina_principal():
             st.warning("Levantamentos com último ano 2010 são aqueles nunca levantados")
 
             
-            # POR UNDIADE / LOCALIDADE
+            # POR UNIDADE / LOCALIDADE
             if not filtro_unidade:
                 st.subheader('Quantidade de bens levantados por Unidade')
                 contagem_unidade = df.groupby(['sigla', 'ano do levantamento']).size().unstack()
@@ -134,9 +211,10 @@ def pagina_principal():
             st.pyplot(grafico_contagem_unidade.figure)
             st.warning("Levantamentos com último ano 2010 são aqueles nunca levantados")
 
-
             # gráfico por valor
-            
+
+
+
             # POR GRUPO DE MATERIAL / SUBGRUPO
             if not filtro_grupo:
                 st.subheader('Quantidade de bens levantados por Grupo de Material')
@@ -185,6 +263,67 @@ def pagina_principal():
             # por valor
 
 
+
+            # -- EVOLUÇÃO DO LEVANTAMENTO --
+            st.header('Evolução do Levantamento')
+            df_levantamento_historico = pd.DataFrame()
+            CAMINHO_PASTA = 'data_silver'
+            UG = st.session_state.selected_ug
+            PADRAO_INICIO = f'{UG}_estatisticas_levantamento_{UG}_'
+            
+            # Inserir levantamento estimado e data de início, depois salvar em json par achamar, se existir
+            levantamento_diario_estimado = 320
+
+
+            df_levantamento_historico = buscar_e_ler_arquivos_json(CAMINHO_PASTA, PADRAO_INICIO)
+            df_levantamento_historico_geral = df_levantamento_historico[['qtde_levantado','perc_levantado','data_levantamento']].groupby('data_levantamento').sum().reset_index()
+            
+            for i in range(len(df_levantamento_historico_geral)):
+                if i == 0:
+                    df_levantamento_historico_geral['levantamento_estimado'] = levantamento_diario_estimado
+                else:
+                    df_levantamento_historico_geral['levantamento_estimado'][i] = df_levantamento_historico_geral['levantamento_estimado'][i-1] + levantamento_diario_estimado
+            df_levantamento_historico_geral.drop(columns=['perc_levantado'], inplace=True)
+
+            #guardar o valor máximo entre qtde levantada e levantamento estimado
+            valor_maximo = df_levantamento_historico_geral[['qtde_levantado','levantamento_estimado']].max().max()
+            # criar gráfico de área onde o eixo x é a data de levantamento e o eixo y é a quantidade levantada e a quantidade estimada
+            linha_levantamento = alt.Chart(df_levantamento_historico_geral).mark_area(opacity=0.5).encode(
+                x=alt.X('data_levantamento:T', title='Data do Levantamento'),
+                y=alt.Y('qtde_levantado:Q', title='Quantidade Levantada', scale=alt.Scale(domain=[0, valor_maximo])),
+                tooltip=['data_levantamento', 'qtde_levantado']
+            ).properties(
+                width=800,
+                height=400
+            )
+            # Adicionar a linha de levantamento estimado
+            linha_estimativa = alt.Chart(df_levantamento_historico_geral).mark_line(color='red').encode(
+                x=alt.X('data_levantamento:T', title='Data do Levantamento'),
+                y=alt.Y('levantamento_estimado:Q', title='Levantamento Estimado', scale=alt.Scale(domain=[0, valor_maximo])),
+                tooltip=['data_levantamento', 'levantamento_estimado']
+            ).properties(
+                width=800,
+                height=400
+            )
+            # Adicionar rótulos com os valores da quantidade levantada
+            text = alt.Chart(df_levantamento_historico_geral).mark_text(
+                align='center',
+                baseline='bottom', # Alterado para 'bottom' para posicionar acima da área
+                dy=-5  # Ajusta a posição vertical do texto
+            ).encode(
+                x=alt.X('data_levantamento:T'),
+                y=alt.Y('qtde_levantado:Q'),
+                text=alt.Text('qtde_levantado:Q'),  # Exibe os valores
+                color=alt.value('black') # Define a cor do texto
+            )
+            # Mergir os três gráficos (área, linha e texto) e aplicar a configuração de grade
+            grafico_levantamento = (linha_levantamento + linha_estimativa + text).configure_axis(
+                grid=True
+            )
+            # Exibir o gráfico no Streamlit
+            st.altair_chart(grafico_levantamento, use_container_width=True)
+
+            # -- DATAFRAME --
             st.dataframe(df)
             st.divider()
 
