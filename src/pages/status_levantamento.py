@@ -378,6 +378,15 @@ def pagina_principal():
                                                      ).configure_view(stroke='transparent',
                                                                       fill='white')
             # Exibir o gráfico no Streamlit
+            st.markdown("""
+                        <h2 style='text-align: center;'>
+                            Histórico de 
+                            <span style='color: blue;'>Levantamento</span>
+                            e 
+                            <span style='color: red;'>Estimado</span>
+                        </h2>
+                        <hr style='border: 1px solid #ccc;'>
+                        """, unsafe_allow_html=True)
             st.altair_chart(grafico_levantamento, use_container_width=True)
 
             # -- DATAFRAME --
