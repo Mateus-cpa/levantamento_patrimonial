@@ -113,6 +113,7 @@ def pagina_principal():
             st.title(f'Status do levantamento da UG {st.session_state.selected_ug}')
             df = pd.read_csv(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv', dtype=str)
             df = df[df['status'].isin(['EFETIVADO','ACAUTELADO','BEM NÃO LOCALIZADO','EM PROCESSO DE ALIENAÇÃO'])]
+            total_bens_ativos = df.shape[0]
             col1,col2,col3 = st.columns([0.25,0.25,0.5])
             todos_bens = col1.button('Todos bens')
             if todos_bens:
@@ -139,16 +140,16 @@ def pagina_principal():
                 
 
             # -- LEVANTAMENTO --
-            col1, col2 = st.columns(2)
+            col_qtd, col_perc = st.columns(2)
             qtd_bens = df.shape[0]
             ano_atual = str(datetime.today().year)
             qtd_inventariados = len(df[df['ano do levantamento'] == ano_atual])
-            col1.metric('Qtde. de bens', qtd_bens)
-            col2.metric('',None)
-            col1.metric('Total inventariados', qtd_inventariados)
-            col2.metric('Perc. Inventariado', f'{round(qtd_inventariados/qtd_bens*100,2)}%')
-            col1.metric('Total não inventariados', qtd_bens-qtd_inventariados)
-            col2.metric('Perc. não Inventariado', f'{round((1-qtd_inventariados/qtd_bens)*100,2)}%')
+            col_qtd.metric('Qtde. de bens', qtd_bens)
+            col_perc.metric('',None)
+            col_qtd.metric('Total inventariados', qtd_inventariados)
+            col_perc.metric('Perc. Inventariado', f'{round(qtd_inventariados/qtd_bens*100,2)}%')
+            col_qtd.metric('Total não inventariados', qtd_bens-qtd_inventariados)
+            col_perc.metric('Perc. não Inventariado', f'{round((1-qtd_inventariados/qtd_bens)*100,2)}%')
 
             # Levantamento por último ano
             st.subheader('Quantidade de bens pelo último ano de levantamento')
@@ -271,24 +272,79 @@ def pagina_principal():
             UG = st.session_state.selected_ug
             PADRAO_INICIO = f'{UG}_estatisticas_levantamento_{UG}_'
             
-            # Inserir levantamento estimado e data de início, depois salvar em json par achamar, se existir
-            levantamento_diario_estimado = 320
+            # Inserir levantamento estimado e data de início, depois salvar em json para chamar, se existir
+            col1, col2, col3 = st.columns([3,3,4])
+            prazo_levantamento = col1.number_input('Prazo em dias do levantamento:',
+                                                    min_value = 15,
+                                                    step = 15)
+            quantidade_equipes = col2.number_input('Qtde. de equipes de campo:',
+                                                    min_value = 1,
+                                                    step = 1)
+            levantamento_diario_estimado = round(total_bens_ativos / prazo_levantamento)
 
+            col3.metric('Estimativa de bens/dia/equipe', levantamento_diario_estimado)
 
             df_levantamento_historico = buscar_e_ler_arquivos_json(CAMINHO_PASTA, PADRAO_INICIO)
             df_levantamento_historico_geral = df_levantamento_historico[['qtde_levantado','perc_levantado','data_levantamento']].groupby('data_levantamento').sum().reset_index()
             
+            # 1. Garante que a coluna de data esteja em formato datetime ANTES de calcular min/max
+            df_levantamento_historico_geral['data_levantamento'] = pd.to_datetime(
+                df_levantamento_historico_geral['data_levantamento']
+            )
+
+            # 2. Define as datas limite (min e max)
+            data_inicio_levantamento = df_levantamento_historico_geral['data_levantamento'].min()
+            data_atual_levantamento = df_levantamento_historico_geral['data_levantamento'].max()
+
+            # 3. Gera todos os dias úteis no intervalo
+            todos_dias_uteis = pd.date_range(
+                start=data_inicio_levantamento,
+                end=data_atual_levantamento,
+                freq='B' # Business Day
+            )
+
+            # 4. Define 'data_levantamento' como índice para o preenchimento (resample/reindex)
+            df_com_indice = df_levantamento_historico_geral.set_index('data_levantamento')
+
+            # --- Otimização da Lógica de Preenchimento (Substituindo concat/duplicated por reindex) ---
+
+            # A melhor abordagem no Pandas para garantir que todas as datas em um intervalo
+            # existam e que dados existentes sejam mantidos é usar .reindex().
+            # Isso garante que não haverá duplicatas.
+            df_levantamento_completo = df_com_indice.reindex(todos_dias_uteis)
+
+            # 5. Prepara o DataFrame final:
+            #    a) Converte o índice de volta para uma coluna chamada 'data_levantamento'
+            #    b) O reindex já garante que o DataFrame está ordenado por data
+            df_levantamento_historico_geral = df_levantamento_completo.reset_index().rename(
+                columns={'index': 'data_levantamento'}
+            )
+
+            df_levantamento_historico_geral['qtde_levantado'] = df_levantamento_historico_geral['qtde_levantado'].ffill(axis=0)
+
+
             for i in range(len(df_levantamento_historico_geral)):
                 if i == 0:
-                    df_levantamento_historico_geral['levantamento_estimado'] = levantamento_diario_estimado
+                    # 1. Inicializa o primeiro valor
+                    df_levantamento_historico_geral.loc[i, 'levantamento_estimado'] = levantamento_diario_estimado
                 else:
-                    df_levantamento_historico_geral['levantamento_estimado'][i] = df_levantamento_historico_geral['levantamento_estimado'][i-1] + levantamento_diario_estimado
+                    # 2. Pega o valor acumulado anterior
+                    valor_anterior = df_levantamento_historico_geral.loc[i-1, 'levantamento_estimado']
+                    
+                    # 3. Calcula o novo valor potencial
+                    novo_valor = valor_anterior + levantamento_diario_estimado
+                    
+                    # 4. Checa o limite e atribui
+                    # O valor atribuído será o menor entre o novo_valor e o total_bens_ativos
+                    valor_final = min(novo_valor, total_bens_ativos)
+                    
+                    df_levantamento_historico_geral.loc[i, 'levantamento_estimado'] = valor_final
             df_levantamento_historico_geral.drop(columns=['perc_levantado'], inplace=True)
 
             #guardar o valor máximo entre qtde levantada e levantamento estimado
             valor_maximo = df_levantamento_historico_geral[['qtde_levantado','levantamento_estimado']].max().max()
-            # criar gráfico de área onde o eixo x é a data de levantamento e o eixo y é a quantidade levantada e a quantidade estimada
-            linha_levantamento = alt.Chart(df_levantamento_historico_geral).mark_area(opacity=0.5).encode(
+            # -- GRÁFICO HISTÓRICO LEVANTAMENTO --
+            linha_levantamento = alt.Chart(df_levantamento_historico_geral).mark_line(color='blue').encode(
                 x=alt.X('data_levantamento:T', title='Data do Levantamento'),
                 y=alt.Y('qtde_levantado:Q', title='Quantidade Levantada', scale=alt.Scale(domain=[0, valor_maximo])),
                 tooltip=['data_levantamento', 'qtde_levantado']
@@ -317,9 +373,10 @@ def pagina_principal():
                 color=alt.value('black') # Define a cor do texto
             )
             # Mergir os três gráficos (área, linha e texto) e aplicar a configuração de grade
-            grafico_levantamento = (linha_levantamento + linha_estimativa + text).configure_axis(
-                grid=True
-            )
+            grafico_levantamento = (linha_levantamento + linha_estimativa 
+                                    ).configure_axis(grid=True
+                                                     ).configure_view(stroke='transparent',
+                                                                      fill='white')
             # Exibir o gráfico no Streamlit
             st.altair_chart(grafico_levantamento, use_container_width=True)
 
