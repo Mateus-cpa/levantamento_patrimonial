@@ -197,7 +197,9 @@ def tela_input_dados(df):
     with st.expander("Informar Localidade e Acompanhamento do Inventário", expanded=True):
         localidade = st.segmented_control('Inventariar:',['Carregar localidade existente','Adicionar localidade'], key='localidade', selection_mode="single", default="Adicionar localidade") 
         if localidade == 'Carregar localidade existente':
-            localidade_escolhida = st.selectbox("Localidade", localidades, key="localidade_escolha")
+            localidade_escolhida = st.selectbox("Localidade", ['Escolha uma localidade'] + localidades, key="localidade_escolha")
+            if localidade_escolhida != 'Escolha uma localidade':
+                st.session_state.localidade_escolhida = localidade_escolhida
         
         if localidade == 'Adicionar localidade':
             col1, col2 = st.columns(2)
