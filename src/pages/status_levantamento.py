@@ -282,7 +282,7 @@ def pagina_principal():
                                                     step = 1)
             levantamento_diario_estimado = round(total_bens_ativos / prazo_levantamento)
 
-            col3.metric('Estimativa de bens/dia/equipe', levantamento_diario_estimado)
+            col3.metric('Estimativa de bens/dia/equipe', round(levantamento_diario_estimado/quantidade_equipes))
 
             df_levantamento_historico = buscar_e_ler_arquivos_json(CAMINHO_PASTA, PADRAO_INICIO)
             df_levantamento_historico_geral = df_levantamento_historico[['qtde_levantado','perc_levantado','data_levantamento']].groupby('data_levantamento').sum().reset_index()
