@@ -128,11 +128,11 @@ def exibir_detalhes_patrimonio(df, resultados_busca):
             st.write(f"**Nº Serial:** {df.loc[resultados_busca,'serie_total'].values[0]}")
         with col2:
             st.write(f"**Denominação:** {df.loc[resultados_busca,'denominacao'].values[0]}")
-            if df.loc[resultados_busca,'localidade'].values[0] == st.session_state['localidade_selecionada'][0]:
+            if df.loc[resultados_busca,'localidade'].values[0] == st.session_state['localidade_escolhida'][0]:
                 st.write(f"**Divergência de localidade:** :green[{'não'}]")
             else:
                 st.write(f"**Divergência de localidade:** :red[{'SIM'}]")
-            if df.loc[resultados_busca,'localidade'].values[0] == st.session_state['localidade_selecionada'][0]:
+            if df.loc[resultados_busca,'localidade'].values[0] == st.session_state['localidade_escolhida'][0]:
                 st.write(f"**Localidade:** :green[{df.loc[resultados_busca,'localidade'].values[0]}]")
             else:
                 st.write(f"**Localidade:** :red[{df.loc[resultados_busca,'localidade'].values[0]}]")
@@ -198,8 +198,6 @@ def tela_input_dados(df):
         localidade = st.segmented_control('Inventariar:',['Carregar localidade existente','Adicionar localidade'], key='localidade', selection_mode="single", default="Adicionar localidade") 
         if localidade == 'Carregar localidade existente':
             localidade_escolhida = st.selectbox("Localidade", ['Escolha uma localidade'] + localidades, key="localidade_escolha")
-            if localidade_escolhida != 'Escolha uma localidade':
-                st.session_state.localidade_escolhida = localidade_escolhida
         
         if localidade == 'Adicionar localidade':
             col1, col2 = st.columns(2)
@@ -207,8 +205,8 @@ def tela_input_dados(df):
             localidade_escolhida = col2.text_input("Localidade", key="localidade_nova")
             localidade_escolhida = f'{unidade_patrimonial} - {localidade_escolhida}'
         
-        st.session_state['localidade_selecionada'] = localidade_escolhida
-        st.session_state['acompanhamento'] = st.text_input("Acompanhamento inventário")
+        st.session_state.localidade_escolhida = localidade_escolhida
+        st.session_state.acompanhamento = st.text_input("Acompanhamento inventário")
         
     
     
@@ -280,7 +278,7 @@ def tela_input_dados(df):
     
     
     # -- Seção Bens inventariados --
-    st.subheader(f"{len(st.session_state['inventario'])} Bem(ns) Levantado(s) em {st.session_state['localidade_selecionada']}")
+    st.subheader(f"{len(st.session_state['inventario'])} Bem(ns) Levantado(s) em {st.session_state.localidade_escolhida}")
     inventario_convertido = [int(valor) for valor in st.session_state['inventario']]
     df.set_index('num tombamento', inplace=True, drop=False)
     df_inventario = df[df.index.isin(inventario_convertido)]
@@ -322,7 +320,8 @@ def tela_input_dados(df):
     df_localidade = df_localidade[~df_localidade['status'].isin(['ALIENADO', 'ANULADO', 'DESMEMBRADO'])]
     #excluir os bens que já foram inventariados
     df_localidade = df_localidade[df_localidade['num tombamento'].isin(st.session_state['inventario']) == False]
-    st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state['localidade_selecionada']}")    
+    st.session_state.df_localidade = df_localidade
+    st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state.localidade_escolhida}")    
     st.dataframe(df_localidade[colunas_de_interesse], use_container_width=True)
 
     st.divider()
@@ -333,7 +332,7 @@ def tela_input_dados(df):
         # permitir selecionar vários itens de df_inventario e adicionar na lista st.session_state['etiquetas'] e após botão de imprimir etiquetas
         st.dataframe(df_inventario.loc[st.session_state['gerar_etiquetas'],colunas_de_interesse], use_container_width=True)
         if st.button("Imprimir etiquetas"):
-            etiq.gerar_etiquetas(st.session_state['gerar_etiquetas'], st.session_state['localidade_selecionada'][0])
+            etiq.gerar_etiquetas(st.session_state['gerar_etiquetas'], st.session_state.localidade_escolhida[0])
             st.success("Etiquetas impressas com sucesso!")
         st.divider()
 
@@ -341,7 +340,7 @@ def tela_input_dados(df):
     if st.button("Concluir Levantamento"):
         st.success("Levantamento concluído!")
         # Transformar st.session_state['inventario'] em txt
-        localidade_final = st.session_state["localidade_selecionada"][0].replace('/','-')
+        localidade_final = st.session_state.localidade_escolhida[0].replace('/','-')
         path_destino = f'data_gold/{localidade_final}.txt'
         path_destino = path_destino.replace("'", "").replace("[", "").replace("]", "")
         with open(path_destino, 'w') as f:
@@ -356,6 +355,7 @@ def tela_input_dados(df):
             mime='text/plain',
             #icon=':download:'
         )
+        st.switch_page('relatorio_levantamento.py')
         
         
     
@@ -364,8 +364,11 @@ st.set_page_config(
     page_title='Levantamento Patrimonial',
     page_icon='📝',
     layout='wide')
-
-if ((st.session_state.is_authenticated == False) or ('selected_ug' not in st.session_state)):
+if 'is_authenticated' not in st.session_state:
+    st.session_state.is_authenticated = False
+if 'selected_ug' not in st.session_state:
+    st.session_state.selected_ug = None
+if ((st.session_state.is_authenticated == False) or (st.session_state.selected_ug == None)):
     botao_retornar = st.button('Retornar para Credenciamento')
     if botao_retornar:
         st.switch_page('menu_principal.py')
