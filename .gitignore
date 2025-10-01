@@ -3,3 +3,5 @@
 .env
 .data
 data_bronze
+data_gold
+__pycache__
