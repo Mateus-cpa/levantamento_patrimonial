@@ -139,7 +139,7 @@ def pagina_principal():
                 st.session_state.titulo_grafico = titulo_sigla
                 
 
-            # -- LEVANTAMENTO --
+            # -- MÉTRICAS LEVANTAMENTO --
             col_qtd, col_perc = st.columns(2)
             qtd_bens = df.shape[0]
             ano_atual = str(datetime.today().year)
@@ -151,6 +151,13 @@ def pagina_principal():
             col_qtd.metric('Total não inventariados', qtd_bens-qtd_inventariados)
             col_perc.metric('Perc. não Inventariado', f'{round((1-qtd_inventariados/qtd_bens)*100,2)}%')
 
+            # -- FILTRO NÃO INVENTARIADOS --
+            escolhe_inventariados = st.segmented_control("Todos os bens ou apenas não inventariados?",
+                                                         options=["Todos os bens", "Apenas não inventariados"],
+                                                        key="escolha_inventariados")
+            if escolhe_inventariados == "Apenas não inventariados":
+                df = df[df['ano do levantamento'] != ano_atual]
+                
             # Levantamento por último ano
             st.subheader('Quantidade de bens pelo último ano de levantamento')
             histograma_levantamento = df.groupby('ano do levantamento')['ano do levantamento'].count()
@@ -174,6 +181,8 @@ def pagina_principal():
             else:
                 st.subheader('Quantidade de bens levantados por Localidade')
                 contagem_unidade = df.groupby(['localidade', 'ano do levantamento']).size().unstack()
+            if escolhe_inventariados == "Apenas não inventariados":
+                contagem_unidade[ano_atual] = 0
             contagem_unidade['soma'] = contagem_unidade.sum(axis=1).fillna(0).astype(int)
             contagem_unidade['percentual'] = contagem_unidade[ano_atual]/contagem_unidade['soma']
             contagem_unidade['percentual'] = contagem_unidade['percentual'].mul(100).round(1).fillna(0)
@@ -223,6 +232,8 @@ def pagina_principal():
             else:
                 st.subheader('Quantidade de bens levantados por Subgrupo de material')
                 contagem_grupo = df.groupby(['subgrupo de material', 'ano do levantamento']).size().unstack()
+            if escolhe_inventariados == "Apenas não inventariados":
+                contagem_grupo[ano_atual] = 0
             contagem_grupo['soma'] = contagem_grupo.sum(axis=1).fillna(0).astype(int)
             contagem_grupo['percentual'] = contagem_grupo[ano_atual]/contagem_grupo['soma']
             contagem_grupo['percentual'] = contagem_grupo['percentual'].mul(100).round(1).fillna(0)
@@ -276,7 +287,8 @@ def pagina_principal():
             col1, col2, col3 = st.columns([3,3,4])
             prazo_levantamento = col1.number_input('Prazo em dias do levantamento:',
                                                     min_value = 15,
-                                                    step = 15)
+                                                    step = 15,
+                                                    placeholder=90)
             quantidade_equipes = col2.number_input('Qtde. de equipes de campo:',
                                                     min_value = 1,
                                                     step = 1)
