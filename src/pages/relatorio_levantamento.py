@@ -55,8 +55,8 @@ def gerar_pdf_levantamento():
         pdf.ln()
 
     # 5. Salvar o PDF
-    pdf.output(f'data_gold/relatorio_dinamico.pdf')
-    print("PDF 'relatorio_dinamico.pdf' gerado com sucesso!")
+    pdf.output(f"data_gold/{st.session_state.selected_ug}_{st.session_state.localidade_escolhida[0]}.pdf")
+    st.success(f"PDF 'data_gold/{st.session_state.selected_ug}_{st.session_state.localidade_escolhida[0]}.pdf' gerado com sucesso!")
 
 
 def tela_relatorio_levantamento():
@@ -97,9 +97,10 @@ def tela_relatorio_levantamento():
             btn = st.download_button(
                 label="Download do Relatório em PDF",
                 data=file,
-                file_name="relatorio_dinamico.pdf",
+                file_name=f"{st.session_state.selected_ug}_{st.session_state.localidade_escolhida[0]}.pdf",
                 mime="application/pdf"
             )
+            btn.download()
         st.success("Relatório gerado com sucesso!")
 
 
