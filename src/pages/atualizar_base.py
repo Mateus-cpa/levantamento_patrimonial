@@ -360,7 +360,7 @@ def atualizacao():
                 st.write('Processando planilha...')
                 df_processado = processa_planilha(df_lista_materiais)
                 progresso.progress(70)
-                if len(df_processado.columns) != 47:
+                if len(df_processado.columns) != 48:
                     st.warning(f"qtde colunas: {len(df_processado.columns)}")
                     corrige_colunas_parametros(df_processado)
                     st.info("Verifique as colunas excedentes na planilha e ajuste o código conforme necessário.")
