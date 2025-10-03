@@ -20,16 +20,19 @@ def adicionar_ao_inventario(id = int):
         id: O ID do patrimônio a ser adicionado.
     """
     if 'df_inventario' not in st.session_state:
-        st.session_state.df_inventario = pd.DataFrame(columns=['num_tombamento'])
-    if not id in st.session_state.df_inventario['num_tombamento'].values:
-        st.session_state.df_inventario = st.session_state.df_inventario.append({'num_tombamento': id}, ignore_index=True)
+        st.session_state.df_inventario = pd.DataFrame(columns=['num tombamento'])
+    if not id in st.session_state.df_inventario['num tombamento'].values:
+        st.session_state.df_inventario = pd.concat([st.session_state.df_inventario, pd.DataFrame({'num tombamento': [id]})], ignore_index=True)
         st.success(f"Patrimônio {id} adicionado ao inventário.")
     else:
         st.warning(f"Patrimônio {id} já está no inventário.")
     # adicionar usuario, data e localidade
-    st.session_state.df_inventario.at[st.session_state.df_inventario.index[-1], 'usuario'] = st.session_state.usuario
-    st.session_state.df_inventario.at[st.session_state.df_inventario.index[-1], 'data'] = dt.datetime.now()
-    st.session_state.df_inventario.at[st.session_state.df_inventario.index[-1], 'localidade'] = st.session_state.localidade_escolhida[0]
+    st.session_state.df_inventario.at[st.session_state.df_inventario.index[-1], 'usuario'] = st.session_state.username
+    st.session_state.df_inventario.at[st.session_state.df_inventario.index[-1], 'data_inventario'] = dt.datetime.now()
+    if type(st.session_state.localidade_escolhida) == list:
+        st.session_state.df_inventario.at[st.session_state.df_inventario.index[-1], 'localidade_inventario'] = st.session_state.localidade_escolhida[0]
+    else:
+        st.session_state.df_inventario.at[st.session_state.df_inventario.index[-1], 'localidade_inventario'] = st.session_state.localidade_escolhida
     #colocar condição de não adicionar bem com status alienado ou já inventariado no ano
 
     
@@ -190,14 +193,11 @@ def tela_input_dados(df):
     colunas_de_interesse = ['denominacao', 'status', 'marca_total', 'modelo_total', 'serie_total', 'localidade','acautelado para', 'tombo_antigo', 'ultimo levantamento', 'valor','especificacoes','num tombamento']
     st.title("Levantamento Patrimonial - " + st.session_state.selected_ug)
     if 'df_inventario' not in st.session_state:
-        st.session_state.df_inventario = pd.DataFrame(columns=['num_tombamento'])
+        st.session_state.df_inventario = pd.DataFrame(columns=['num tombamento'])
     if 'gerar_etiquetas' not in st.session_state:
         st.session_state.gerar_etiquetas = []
     localidades = obter_localidades()
-    #verificar se serão utilizados
-    df_resultados_busca = pd.DataFrame(columns=['num tombamento', 'inventariado', 'horario_inventário', 'local_inventario'])
     
-
     # Informar localidade e acompanhamento inventario
     with st.expander("Informar Localidade e Acompanhamento do Inventário", expanded=True):
         localidade = st.segmented_control('Inventariar:',['Carregar localidade existente','Adicionar localidade'], key='localidade', selection_mode="single", default="Adicionar localidade") 
@@ -283,62 +283,67 @@ def tela_input_dados(df):
     
     
     # -- Seção Bens inventariados --
-    st.subheader(f"{len(st.session_state.df_inventario)} Bem(ns) Levantado(s) em {st.session_state.localidade_escolhida}")
-    if len(st.session_state.df_inventario) > 0:
-        inventario_convertido = [int(valor) for valor in st.session_state.df_inventario['num_tombamento']]
-        df.set_index('num tombamento', inplace=True, drop=False)
-        df_inventario = df[df.index.isin(inventario_convertido)]
-    elif st.session_state.df_inventario.empty:
+    st.subheader(f"{len(st.session_state.df_inventario)} Bem(ns) Levantado(s) em {st.session_state.localidade_escolhida[0]}")
+    if len(st.session_state.df_inventario) == 0:
         st.warning('Nenhum bem foi adicionado ao inventário ainda.')
     else:
-        df_inventario = df_inventario[colunas_de_interesse]
-        df_inventario['gerar_etiquetas'] = False
-        df_inventario['excluir'] = False
+        df_inventario = st.session_state.df_inventario.copy()
+        if df_inventario.index.name == 'num tombamento':
+            df_inventario.reset_index(drop=True, inplace=True)
+        df_merge = df[colunas_de_interesse].copy()
+        if df_merge.index.name == 'num tombamento':
+            df_merge.reset_index(drop=True, inplace=True)
+        df_inventario = df_inventario.merge(df_merge, left_on='num tombamento', right_on='num tombamento', how='left')
+        df_inventario.drop(columns=['usuario','data_inventario','localidade_inventario'], inplace=True)
+        # adicionar colunas gerar_etiquetas e excluir
+        df_inventario['etiq'] = False
+        df_inventario['X'] = False
         # colocar na primeira coluna o checkbox para gerar etiquetas
         cols = df_inventario.columns
         # colocar gerar_etiquetas na primeira coluna
-        first_cols = ['gerar_etiquetas', 'excluir'] 
+        first_cols = ['etiq', 'X'] 
         other_cols = [col for col in cols if (col not in first_cols)]
         cols = first_cols + other_cols
         df_inventario = df_inventario[cols]
+        df_inventario.set_index('num tombamento', inplace=True, drop=True)
         df_etiquetas = st.data_editor(df_inventario, use_container_width=True)
         col1, col2, col3 = st.columns([0.1, 0.17, 0.73])
         if col2.button('Gerar etiquetas'):
-            st.session_state.gerar_etiquetas = df_etiquetas.loc[df_etiquetas['gerar_etiquetas'] == True].index.tolist()
+            st.session_state.gerar_etiquetas = df_etiquetas.loc[df_etiquetas['etiq'] == True].index.tolist()
         if col3.button('Excluir itens'):
-            st.session_state.df_inventario = df_inventario.loc[df_inventario['excluir'] == False].index.tolist()
+            st.session_state.df_inventario = df_inventario.loc[df_inventario['X'] == False].index.tolist()
         
     st.divider()
     
     # -- Verificação de duplicidade --
-    if len(st.session_state.df_inventario) != len(set(st.session_state.df_inventario)):
+    if st.session_state.df_inventario['num tombamento'].duplicated().any():
         st.warning("Existem itens duplicados no inventário. Verifique os IDs.")
-        # Exibir os itens duplicados
-        duplicados = [item for item in set(st.session_state.df_inventario) if st.session_state.df_inventario.count(item) > 1]
+        # Exibir onde num tombamento estiver 
+        duplicados = st.session_state.df_inventario['num tombamento'][st.session_state.df_inventario['num tombamento'].duplicated(keep=False)].tolist()
         st.write("Itens duplicados:", duplicados)
         
         st.divider()
     
     # -- Seção bens a inventariar --
-    df_localidade = df[df['localidade'].isin(list(localidade_escolhida))]
+    df_localidade = df[df['localidade'].isin(list(st.session_state.localidade_escolhida))]
     df_localidade.set_index('num tombamento', inplace=True,drop=False)
     # excluir bens alienados, anulados ou desmembrados
     df_localidade = df_localidade[~df_localidade['status'].isin(['ALIENADO', 'ANULADO', 'DESMEMBRADO'])]
     #excluir os bens que já foram inventariados
-    df_localidade = df_localidade[df_localidade['num tombamento'].isin(st.session_state.df_inventario) == False]
+    df_localidade = df_localidade[~df_localidade['num tombamento'].isin(st.session_state.df_inventario['num tombamento'].values)]
     st.session_state.df_localidade = df_localidade
-    st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state.localidade_escolhida}")    
+    st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state.localidade_escolhida[0]}")    
     st.dataframe(df_localidade[colunas_de_interesse], use_container_width=True)
 
     st.divider()
     
     # -- Gerar etiquetas --
-    if len(st.session_state['gerar_etiquetas']) > 0:
+    if len(st.session_state['etiq']) > 0:
         st.subheader("Etiquetas a gerar:")
         # permitir selecionar vários itens de df_inventario e adicionar na lista st.session_state['etiquetas'] e após botão de imprimir etiquetas
-        st.dataframe(df_inventario.loc[st.session_state['gerar_etiquetas'],colunas_de_interesse], use_container_width=True)
+        st.dataframe(df_inventario.loc[st.session_state['etiq'],colunas_de_interesse], use_container_width=True)
         if st.button("Imprimir etiquetas"):
-            etiq.gerar_etiquetas(st.session_state['gerar_etiquetas'], st.session_state.localidade_escolhida[0])
+            etiq.gerar_etiquetas(st.session_state['etiq'], st.session_state.localidade_escolhida[0])
             st.success("Etiquetas impressas com sucesso!")
         st.divider()
 
@@ -350,7 +355,7 @@ def tela_input_dados(df):
         path_destino = f'data_gold/{localidade_final}.txt'
         path_destino = path_destino.replace("'", "").replace("[", "").replace("]", "")
         with open(path_destino, 'w') as f:
-            for item in st.session_state.df_inventario['num_tombamento']:
+            for item in st.session_state.df_inventario['num tombamento']:
                 f.write(f"{item}\n")    
         with open(path_destino, 'r') as f:        
             conteudo_arquivo = f.read()    
