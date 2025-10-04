@@ -308,12 +308,12 @@ def tela_input_dados(df):
         col_etiq, col_excluir, col_3 = st.columns(3)
         if col_etiq.button('Gerar etiquetas'):
             st.session_state.gerar_etiquetas = df_etiquetas.loc[df_etiquetas[' '] == True].index.tolist()
+            st.success(f"Itens {st.session_state.gerar_etiquetas} marcados para geração de etiquetas.")
         if col_excluir.button('Excluir itens'):
             itens_excluir = df_etiquetas.loc[df_etiquetas[' '] == True, 'num tombamento'].tolist()
             st.session_state.df_inventario = st.session_state.df_inventario[~st.session_state.df_inventario['num tombamento'].isin(itens_excluir)]
             st.success(f"Itens {itens_excluir} excluídos do inventário.")
-            st.experimental_rerun()
-        
+        st.markdown(f"#### **Total do inventário:** R$ {df_inventario['valor'].sum():,.2f}")
     st.divider()
     
     # -- Verificação de duplicidade --
@@ -334,6 +334,8 @@ def tela_input_dados(df):
     df_localidade = df_localidade[~df_localidade['num tombamento'].isin(st.session_state.df_inventario['num tombamento'].values)]
     st.session_state.df_localidade = df_localidade
     st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state.localidade_escolhida[0]}")    
+    # valor total  em vermelho
+    st.markdown(f"#### Valor total dos bens a inventariar: :red[R$ {df_localidade['valor'].sum():,.2f}]")
     st.dataframe(df_localidade[colunas_de_interesse], 
                 use_container_width=True)
 
@@ -343,7 +345,9 @@ def tela_input_dados(df):
     if len(st.session_state.gerar_etiquetas) > 0:
         st.subheader("Etiquetas a gerar:")
         # permitir selecionar vários itens de df_inventario e adicionar na lista st.session_state['etiquetas'] e após botão de imprimir etiquetas
-        st.dataframe(df_inventario.loc[st.session_state.gerar_etiquetas,colunas_de_interesse], use_container_width=True)
+        df_gerar_etiquetas = df_inventario.loc[st.session_state.gerar_etiquetas,colunas_de_interesse]
+        df_gerar_etiquetas.set_index('num tombamento', inplace=True, drop=False)
+        st.dataframe(df_gerar_etiquetas, use_container_width=True)
         if st.button("Imprimir etiquetas"):
             etiq.gerar_etiquetas(st.session_state.gerar_etiquetas, st.session_state.localidade_escolhida[0])
             st.success("Etiquetas impressas com sucesso!")
