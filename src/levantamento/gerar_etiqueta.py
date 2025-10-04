@@ -1,12 +1,19 @@
 #Autoria: Rodrigo Henrique Schernovski
-
+import barcode as barcode_module
+from barcode.writer import ImageWriter
+from PIL import Image, ImageDraw
+from reportlab.lib.pagesizes import mm
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+import os
+import streamlit as st
 
 class BarcodePF(object):
     def __init__(self, patrimonio : str):
         
         self.patrimonio = patrimonio  # Número do patrimônio em string
-        self.path = "5B_etiquetas_geradas/"                # Para salvar os arquivos em outro diretório
-        
+        self.path = "data_gold/5B_etiquetas_geradas/"                # Para salvar os arquivos em outro diretório
+        os.makedirs(self.path, exist_ok=True)                      # Cria o diretório se não existir
         self.png_name = os.path.join(self.path, f'codigo_de_barras_{patrimonio}') # Nome do código de barras em .png
         self.pdf_name =  os.path.join(self.path, f'codigo_de_barras_{patrimonio}') # Nome do código de barras em .pdf
         
@@ -120,11 +127,11 @@ def concatenar_etiquetas_individuais(nome_saida: str):
 
     # Adiciona os arquivos PDF individuais da pasta etiquetas_geradas/ 
     # de data dos mais antigo par ao mais recente ao objeto PdfMerger
-    lista_arquivos = sorted(os.listdir("5B_etiquetas_geradas/"), key=lambda x: os.path.getmtime(os.path.join("5B_etiquetas_geradas/", x)))
+    lista_arquivos = sorted(os.listdir("data_gold/5B_etiquetas_geradas/"), key=lambda x: os.path.getmtime(os.path.join("data_gold/5B_etiquetas_geradas/", x)))
     print(f'quantidade de etiquetas geradas: {len(lista_arquivos)}')
     for arquivo in lista_arquivos:
         if arquivo.endswith(".pdf"):
-            caminho_arquivo = os.path.join("5B_etiquetas_geradas/", arquivo)
+            caminho_arquivo = os.path.join("data_gold/5B_etiquetas_geradas/", arquivo)
             merger.append(caminho_arquivo)
     
 
@@ -136,16 +143,17 @@ def remover_arquivos():
     """
     Remove os arquivos PDF individuais da pasta etiquetas_geradas/.
     """
-    for arquivo in os.listdir("5B_etiquetas_geradas/"):
+    for arquivo in os.listdir("data_gold/5B_etiquetas_geradas/"):
         if arquivo.endswith(".pdf"):
-            os.remove(os.path.join("5B_etiquetas_geradas/", arquivo))
+            os.remove(os.path.join("data_gold/5B_etiquetas_geradas/", arquivo))
 
 def gerar_etiquetas(arquivo_origem_lista: list, localidade: str):
-    
     """
     Gera etiquetas a partir de um arquivo de texto com os patrimônios.
     """
-    
+    os.makedirs("data_gold/5B_etiquetas_geradas/", exist_ok=True)
+    os.makedirs("data_gold/5C_etiqueta_arquivo_final/", exist_ok=True)
+
     if isinstance(arquivo_origem_lista, list):
         patrimonios = arquivo_origem_lista # Lê o arquivo txt com os patrimônios
     else:
@@ -157,29 +165,22 @@ def gerar_etiquetas(arquivo_origem_lista: list, localidade: str):
     st.write(f"Gerando PDF concatenado para o arquivo {localidade}")
     concatenar_etiquetas_individuais(nome_saida = localidade)
     # Download do arquivo PDF concatenado
-    st.download_button(label="Baixar PDF", data=open(f"5C_etiqueta_arquivo_final/{localidade}.pdf", "rb").read(), file_name=f"{localidade}.pdf")
+    st.download_button(label="Baixar PDF", data=open(f"data_gold/5C_etiqueta_arquivo_final/{localidade}.pdf", "rb").read(), file_name=f"{localidade}.pdf")
     st.write('Apagando arquivos pdf individuais de etiquetas_geradas/')
     remover_arquivos()
     st.write('Arquivos individuais apagados com sucesso!')
 
-if __name__ == '__main__':
-    import barcode as barcode_module #type: ignore[import]
-    from barcode.writer import ImageWriter #type: ignore[import]
-    from PIL import Image, ImageDraw #type: ignore[import]
-    from reportlab.lib.pagesizes import mm #type: ignore[import]
-    from reportlab.pdfgen import canvas #type: ignore[import]
-    from reportlab.pdfbase import pdfmetrics #type: ignore[import]
-    import os
-    import streamlit as st #type: ignore[import]
-
-    # Lê o primeiro arquivo na pasta 5A_txt_etiquetas/ 
-    arquivo_origem_txt = os.listdir('5A_txt_etiquetas/')[0] # Lê o primeiro arquivo na pasta 5A_txt_etiquetas/
-    patrimonios = ler_txt(f'5A_txt_etiquetas/{arquivo_origem_txt}') # Lê o arquivo txt com os patrimônios
+# se existir o arquivo na pasta 5A_txt_etiquetas, gera as etiquetas automaticamente
+if os.path.exists('data_gold/5A_txt_etiquetas/') and len(os.listdir('data_gold/5A_txt_etiquetas/')) > 0:
+    os.makedirs("data_gold/5A_txt_etiquetas/", exist_ok=True)
+    arquivo_origem_txt = os.listdir('data_gold/5A_txt_etiquetas/')[0] # Lê o primeiro arquivo na pasta 5A_txt_etiquetas/
+    patrimonios = ler_txt(f'data_gold/5A_txt_etiquetas/{arquivo_origem_txt}') # Lê o arquivo txt com os patrimônios
     for patrimonio in patrimonios:
         patrimonio = str(patrimonio)
         barcode = BarcodePF(patrimonio)
-    print(f"Gerando PDF concatenado para o arquivo {arquivo_origem_txt}")
+        st.write(f"Gerando etiqueta {patrimonio}")
+    st.write(f"Gerando PDF concatenado para o arquivo {arquivo_origem_txt}")
     concatenar_etiquetas_individuais(nome_saida = arquivo_origem_txt)
-    print('Apagando arquivos pdf individuais de etiquetas_geradas/')
+    st.write('Apagando arquivos pdf individuais de etiquetas_geradas/')
     remover_arquivos()
-    print('Arquivos individuais apagados com sucesso!')
+    st.write('Arquivos individuais apagados com sucesso!')

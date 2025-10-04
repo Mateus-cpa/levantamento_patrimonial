@@ -24,6 +24,11 @@ st-pages = "^1.0.1"
 matplotlib = "^3.10.6"
 seaborn = "^0.13.2"
 fpdf = "^1.7.2"
+barcode = "^1.0.4"
+python-barcode = "^0.16.1"
+pillow = "^11.3.0"
+reportlab = "^4.4.4"
+pypdf2 = "^3.0.1"
 
 
 [tool.poetry.group.dev.dependencies]

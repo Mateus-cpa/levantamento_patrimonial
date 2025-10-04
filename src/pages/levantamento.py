@@ -1,11 +1,11 @@
+import os
+
 import streamlit as st
 import pandas as pd
 import datetime as dt
-import levantamento.gerar_etiqueta as etiq
-import os
 
 #from pages.relatorio_levantamento import gerar_pdf_levantamento
-
+from levantamento.gerar_etiqueta import gerar_etiquetas
 
 #Funções auxiliares
 def obter_localidades():
@@ -349,7 +349,7 @@ def tela_input_dados(df):
         df_gerar_etiquetas.set_index('num tombamento', inplace=True, drop=False)
         st.dataframe(df_gerar_etiquetas, use_container_width=True)
         if st.button("Imprimir etiquetas"):
-            etiq.gerar_etiquetas(st.session_state.gerar_etiquetas, st.session_state.localidade_escolhida[0])
+            gerar_etiquetas(st.session_state.gerar_etiquetas, st.session_state.localidade_escolhida[0])
             st.success("Etiquetas impressas com sucesso!")
         st.divider()
 
