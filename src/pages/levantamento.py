@@ -295,23 +295,24 @@ def tela_input_dados(df):
             df_merge.reset_index(drop=True, inplace=True)
         df_inventario = df_inventario.merge(df_merge, left_on='num tombamento', right_on='num tombamento', how='left')
         df_inventario.drop(columns=['usuario','data_inventario','localidade_inventario'], inplace=True)
-        # adicionar colunas gerar_etiquetas e excluir
-        df_inventario['etiq'] = False
-        df_inventario['X'] = False
-        # colocar na primeira coluna o checkbox para gerar etiquetas
+        # colocar ' ' e 'num tombamento' na primeira coluna
+        df_inventario[' '] = False
         cols = df_inventario.columns
-        # colocar gerar_etiquetas na primeira coluna
-        first_cols = ['etiq', 'X'] 
+        first_cols = [' ','num tombamento'] 
         other_cols = [col for col in cols if (col not in first_cols)]
         cols = first_cols + other_cols
-        df_inventario = df_inventario[cols]
-        df_inventario.set_index('num tombamento', inplace=True, drop=True)
-        df_etiquetas = st.data_editor(df_inventario, use_container_width=True)
-        col1, col2, col3 = st.columns([0.1, 0.17, 0.73])
-        if col2.button('Gerar etiquetas'):
-            st.session_state.gerar_etiquetas = df_etiquetas.loc[df_etiquetas['etiq'] == True].index.tolist()
-        if col3.button('Excluir itens'):
-            st.session_state.df_inventario = df_inventario.loc[df_inventario['X'] == False].index.tolist()
+        df_etiquetas = st.data_editor(df_inventario, 
+                                      use_container_width=True,
+                                      hide_index=True,
+                                      column_order=cols,)
+        col_etiq, col_excluir, col_3 = st.columns(3)
+        if col_etiq.button('Gerar etiquetas'):
+            st.session_state.gerar_etiquetas = df_etiquetas.loc[df_etiquetas[' '] == True].index.tolist()
+        if col_excluir.button('Excluir itens'):
+            itens_excluir = df_etiquetas.loc[df_etiquetas[' '] == True, 'num tombamento'].tolist()
+            st.session_state.df_inventario = st.session_state.df_inventario[~st.session_state.df_inventario['num tombamento'].isin(itens_excluir)]
+            st.success(f"Itens {itens_excluir} excluídos do inventário.")
+            st.experimental_rerun()
         
     st.divider()
     
@@ -333,17 +334,18 @@ def tela_input_dados(df):
     df_localidade = df_localidade[~df_localidade['num tombamento'].isin(st.session_state.df_inventario['num tombamento'].values)]
     st.session_state.df_localidade = df_localidade
     st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state.localidade_escolhida[0]}")    
-    st.dataframe(df_localidade[colunas_de_interesse], use_container_width=True)
+    st.dataframe(df_localidade[colunas_de_interesse], 
+                use_container_width=True)
 
     st.divider()
     
     # -- Gerar etiquetas --
-    if len(st.session_state['etiq']) > 0:
+    if len(st.session_state.gerar_etiquetas) > 0:
         st.subheader("Etiquetas a gerar:")
         # permitir selecionar vários itens de df_inventario e adicionar na lista st.session_state['etiquetas'] e após botão de imprimir etiquetas
-        st.dataframe(df_inventario.loc[st.session_state['etiq'],colunas_de_interesse], use_container_width=True)
+        st.dataframe(df_inventario.loc[st.session_state.gerar_etiquetas,colunas_de_interesse], use_container_width=True)
         if st.button("Imprimir etiquetas"):
-            etiq.gerar_etiquetas(st.session_state['etiq'], st.session_state.localidade_escolhida[0])
+            etiq.gerar_etiquetas(st.session_state.gerar_etiquetas, st.session_state.localidade_escolhida[0])
             st.success("Etiquetas impressas com sucesso!")
         st.divider()
 
