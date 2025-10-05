@@ -136,7 +136,7 @@ def concatenar_etiquetas_individuais(nome_saida: str):
     
 
     # Salva o arquivo PDF concatenado
-    merger.write(f"5C_etiqueta_arquivo_final/{nome_saida}.pdf")
+    merger.write(f"data_gold/5C_etiqueta_arquivo_final/{nome_saida}.pdf")
     merger.close()
 
 def remover_arquivos():
