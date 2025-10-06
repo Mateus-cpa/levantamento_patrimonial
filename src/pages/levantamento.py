@@ -1,10 +1,13 @@
 import os
+import datetime as dt
 
 import streamlit as st
 import pandas as pd
 import datetime as dt
+from streamlit_drawable_canvas import st_canvas
 
-#from pages.relatorio_levantamento import gerar_pdf_levantamento
+
+from pages.relatorio_levantamento import gerar_pdf_levantamento
 from levantamento.gerar_etiqueta import gerar_etiquetas
 
 #Funções auxiliares
@@ -343,7 +346,6 @@ def tela_input_dados(df):
     st.divider()
     
     # -- Gerar etiquetas --
-    st.dataframe(st.session_state.gerar_etiquetas)
     if len(st.session_state.gerar_etiquetas) > 0:
         st.subheader("Etiquetas a gerar:")
         df_gerar_etiquetas = df[df['num tombamento'].isin(st.session_state.gerar_etiquetas)][colunas_de_interesse]
@@ -366,22 +368,34 @@ def tela_input_dados(df):
         with open(path_destino, 'r') as f:        
             conteudo_arquivo = f.read()    
         st.download_button(
-            label="Baixar inventário",
+            label="Baixar inventário em TXT",
             data=conteudo_arquivo,
             file_name=path_destino.split('/')[-1],
-            mime='text/plain',
-            #icon=':download:'
+            mime='text/plain'
         )
-        botao_assinar = st.button('Assinar e Gerar Relatório em PDF', key='botao_assinar')
+        botao_assinar = st.button('Assinar e Gerar Relatório em PDF')
         if botao_assinar:
-            #oletar assinatura por caneta/desenho
-            assinatura = st.canvas()
-            #if assinatura.image_data is not None:
-                # gerar pdf com dados do inventário
-                #gerar_pdf_levantamento()
-            # baixar pdf sem alterar págia
-            #st.switch_page('pages/relatorio_levantamento.py')
-        
+            #coletar assinatura por caneta/desenho
+            assinatura = st_canvas(
+            fill_color="rgba(255, 255, 255, 0)",  # Transparent background
+            stroke_width=2,
+            stroke_color="#000000",
+            background_color="#fff",
+            height=150,
+            width=400,
+            drawing_mode="freedraw",
+            key="assinatura_canvas"
+        )
+        if assinatura.image_data is not None:
+            st.session_state.assinatura = assinatura.image_data
+            gerar_pdf_levantamento(
+                inventario=st.session_state.df_inventario,
+                localidade=st.session_state.localidade_escolhida[0],
+                acompanhamento=st.session_state.acompanhamento,
+                assinatura=st.session_state.assinatura,
+                responsavel=st.session_state.username,  # novo parâmetro
+                data_levantamento=dt.datetime.now()     # novo parâmetro
+            )
         
     
 #configurar página wide

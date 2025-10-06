@@ -8,8 +8,10 @@ def gerar_pdf_levantamento():
     
     titulo_relatorio = "Relatório de Levantamento"
     data_geracao = dt.datetime.now().strftime("%d de %B de %Y")
+    
     levantados = st.session_state.df_inventario
     nao_levantados = st.session_state.df_localidade
+
 
     # 2. Configuração do PDF
     pdf = FPDF()
@@ -53,6 +55,11 @@ def gerar_pdf_levantamento():
         for i, item in enumerate(row):
             pdf.cell(larguras[i], 6, str(item), 1, 0, alinha[i])
         pdf.ln()
+
+   # incluir imagem da assinatura ao pdf
+    if 'assinatura' in st.session_state and st.session_state.assinatura is not None:
+        assinatura = st.session_state.assinatura
+        pdf.image(assinatura, x=10, y=pdf.get_y(), w=100)
 
     # 5. Salvar o PDF
     pdf.output(f"data_gold/{st.session_state.selected_ug}_{st.session_state.localidade_escolhida[0]}.pdf")
@@ -104,4 +111,4 @@ def tela_relatorio_levantamento():
         st.success("Relatório gerado com sucesso!")
 
 
-tela_relatorio_levantamento()
+#tela_relatorio_levantamento()
