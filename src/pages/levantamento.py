@@ -355,6 +355,24 @@ def tela_input_dados(df):
             st.success(f"Etiquetas impressas com sucesso em {st.session_state.localidade_escolhida[0]}!")
         st.divider()
 
+    # -- Assinatura --
+    st.subheader("Assinatura")
+
+    if 'assinatura' not in st.session_state:
+        st.session_state.assinatura = None
+
+    #coletar assinatura por caneta/desenho
+    assinatura = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",  # Transparent background
+                stroke_width=2,
+                stroke_color="#000000",
+                        background_color="#fff",
+                        height=150,
+                        width=400,
+                        drawing_mode="freedraw",
+                        key="assinatura_canvas"
+                        )
+    
     # -- Concluir levantamento --
     botao_concluir = st.button("Concluir Levantamento")
     if botao_concluir:
@@ -373,23 +391,11 @@ def tela_input_dados(df):
             file_name=path_destino.split('/')[-1],
             mime='text/plain'
         )
-        botao_assinar = st.button('Assinar e Gerar Relatório em PDF')
-        if botao_assinar:
-            #coletar assinatura por caneta/desenho
-            assinatura = st_canvas(
-            fill_color="rgba(255, 255, 255, 0)",  # Transparent background
-            stroke_width=2,
-            stroke_color="#000000",
-            background_color="#fff",
-            height=150,
-            width=400,
-            drawing_mode="freedraw",
-            key="assinatura_canvas"
-        )
+        
         if assinatura.image_data is not None:
             st.session_state.assinatura = assinatura.image_data
             gerar_pdf_levantamento(
-                inventario=st.session_state.df_inventario,
+                levantado=st.session_state.df_inventario,
                 localidade=st.session_state.localidade_escolhida[0],
                 acompanhamento=st.session_state.acompanhamento,
                 assinatura=st.session_state.assinatura,
