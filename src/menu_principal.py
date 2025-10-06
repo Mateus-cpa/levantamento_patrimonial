@@ -13,6 +13,11 @@ def configurar_pagina():
     st.session_state.is_authenticated = False
     st.session_state.selected_ug = None
     st.session_state.username = None
+    st.session_state.colunas_de_interesse = ['denominacao', 'status', 
+                            'marca_total', 'modelo_total', 'serie_total', 
+                            'localidade','acautelado para', 'tombo_antigo', 
+                            'ultimo levantamento', 'valor',
+                            'especificacoes','num tombamento']
 
 
 

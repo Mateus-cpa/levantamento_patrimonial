@@ -189,11 +189,46 @@ def limpar_session_state(key):
     else:
         st.warning(f"Chave '{key}' não encontrada no estado da sessão.")
 
+def selecionar_localidade(localidades):
+    localidade = st.segmented_control('Inventariar:',['Carregar localidade existente','Adicionar localidade'], key='localidade', selection_mode="single", default="Adicionar localidade") 
+    if localidade == 'Carregar localidade existente':
+        localidade_escolhida = st.selectbox("Localidade", ['Escolha uma localidade'] + localidades, key="localidade_escolha")
+    
+    if localidade == 'Adicionar localidade':
+        col1, col2 = st.columns(2)
+        unidade_patrimonial = col1.text_input("Unidade Patrimonial", key="unidade_patrimonial")
+        localidade_escolhida = col2.text_input("Localidade", key="localidade_nova")
+        localidade_escolhida = f'{unidade_patrimonial} - {localidade_escolhida}'
+    
+    st.session_state.localidade_escolhida = localidade_escolhida
+    st.session_state.acompanhamento = st.text_input("Acompanhamento inventário")
+
+def coletar_assinatura():
+    st.session_state.assinatura = None
+
+    #coletar assinatura por caneta/desenho
+    assinatura = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",  # Transparent background
+                stroke_width=2,
+                stroke_color="#000000",
+                        background_color="#fff",
+                        height=150,
+                        width=400,
+                        drawing_mode="freedraw",
+                        key="assinatura_canvas"
+                        )
+    if assinatura.image_data is not None:
+        st.session_state.assinatura = assinatura.image_data
+        assinatura_final = st.image(st.session_state.assinatura)
+    return assinatura_final
+    
+
 # --- Tela de Input de Dados ---
 def tela_input_dados(df):
 
     # -- configurações iniciais --
-    colunas_de_interesse = ['denominacao', 'status', 'marca_total', 'modelo_total', 'serie_total', 'localidade','acautelado para', 'tombo_antigo', 'ultimo levantamento', 'valor','especificacoes','num tombamento']
+    colunas_de_interesse = st.session_state.colunas_de_interesse
+
     st.title("Levantamento Patrimonial - " + st.session_state.selected_ug)
     if 'df_inventario' not in st.session_state:
         st.session_state.df_inventario = pd.DataFrame(columns=['num tombamento'])
@@ -203,18 +238,7 @@ def tela_input_dados(df):
     
     # Informar localidade e acompanhamento inventario
     with st.expander("Informar Localidade e Acompanhamento do Inventário", expanded=True):
-        localidade = st.segmented_control('Inventariar:',['Carregar localidade existente','Adicionar localidade'], key='localidade', selection_mode="single", default="Adicionar localidade") 
-        if localidade == 'Carregar localidade existente':
-            localidade_escolhida = st.selectbox("Localidade", ['Escolha uma localidade'] + localidades, key="localidade_escolha")
-        
-        if localidade == 'Adicionar localidade':
-            col1, col2 = st.columns(2)
-            unidade_patrimonial = col1.text_input("Unidade Patrimonial", key="unidade_patrimonial")
-            localidade_escolhida = col2.text_input("Localidade", key="localidade_nova")
-            localidade_escolhida = f'{unidade_patrimonial} - {localidade_escolhida}'
-        
-        st.session_state.localidade_escolhida = localidade_escolhida
-        st.session_state.acompanhamento = st.text_input("Acompanhamento inventário")
+        selecionar_localidade(localidades)
         
     
     
@@ -356,22 +380,8 @@ def tela_input_dados(df):
         st.divider()
 
     # -- Assinatura --
-    st.subheader("Assinatura")
-
-    if 'assinatura' not in st.session_state:
-        st.session_state.assinatura = None
-
-    #coletar assinatura por caneta/desenho
-    assinatura = st_canvas(
-                fill_color="rgba(255, 255, 255, 0)",  # Transparent background
-                stroke_width=2,
-                stroke_color="#000000",
-                        background_color="#fff",
-                        height=150,
-                        width=400,
-                        drawing_mode="freedraw",
-                        key="assinatura_canvas"
-                        )
+    st.subheader("Assine no campo abaixo:")
+    coletar_assinatura()
     
     # -- Concluir levantamento --
     botao_concluir = st.button("Concluir Levantamento")
@@ -392,6 +402,7 @@ def tela_input_dados(df):
             mime='text/plain'
         )
         
+        assinatura = coletar_assinatura()
         if assinatura.image_data is not None:
             st.session_state.assinatura = assinatura.image_data
             gerar_pdf_levantamento(
