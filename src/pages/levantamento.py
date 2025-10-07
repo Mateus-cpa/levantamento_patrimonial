@@ -202,6 +202,7 @@ def selecionar_localidade(localidades):
     
     st.session_state.localidade_escolhida = localidade_escolhida
     st.session_state.acompanhamento = st.text_input("Acompanhamento inventário")
+    st.session_state.matricula = st.number_input("Matrícula do Acompanhamento", placeholder="Digite a matrícula", format="%d",step=1)
 
 def coletar_assinatura():
     st.session_state.assinatura = None
@@ -388,7 +389,9 @@ def tela_input_dados(df):
     if botao_concluir:
         # Transformar st.session_state.df_inventario em txt
         localidade_final = st.session_state.localidade_escolhida[0].replace('/','-')
-        path_destino = f'data_gold/{localidade_final}.txt'
+        if not os.path.exists(f'data_gold/{st.session_state.selected_ug}'):
+            os.makedirs(f'data_gold/{st.session_state.selected_ug}')
+        path_destino = f'data_gold/{st.session_state.selected_ug}/{localidade_final}.txt'
         path_destino = path_destino.replace("'", "").replace("[", "").replace("]", "")
         with open(path_destino, 'w') as f:
             for item in st.session_state.df_inventario['num tombamento']:
@@ -409,6 +412,7 @@ def tela_input_dados(df):
                 levantado=st.session_state.df_inventario,
                 localidade=st.session_state.localidade_escolhida[0],
                 acompanhamento=st.session_state.acompanhamento,
+                matricula=st.session_state.matricula,
                 assinatura=st.session_state.assinatura,
                 responsavel=st.session_state.username,  # novo parâmetro
                 data_levantamento=dt.datetime.now()     # novo parâmetro
