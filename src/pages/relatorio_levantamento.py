@@ -4,6 +4,7 @@ import streamlit as st
 import datetime as dt
 import numpy as np
 import tempfile
+import math
 
 import cv2       
 from fpdf import FPDF
@@ -28,6 +29,109 @@ def coletar_assinatura():
         #st.image(st.session_state.assinatura)
     return canvas_result
 
+# --- FUNÇÕES AUXILIARES ---
+
+def draw_dynamic_table(pdf, data_frame, larguras, colunas, alinha):
+    """
+    Desenha o cabeçalho e os dados de uma tabela com altura de linha dinâmica e 
+    gerenciamento de quebra de página.
+    """
+    
+    # Alturas base para cálculo
+    h_data_base = 5.5
+    h_header_base = 5.5
+    h_min_header = 7
+    h_min_data = 6
+    cell_padding = 2 
+    FOOTER_HEIGHT = 15 # Margem de segurança para o rodapé
+
+    # --- FUNÇÃO INTERNA PARA DESENHAR O CABEÇALHO (Para Reutilização) ---
+    def draw_header_block(pdf, colunas, larguras, h_header_base, h_min_header):
+        pdf.set_font('Arial', 'B', 10)
+        
+        # CÁLCULO DA ALTURA MÁXIMA PARA O CABEÇALHO (Repetido para garantir o cálculo em novas páginas)
+        max_h_header_local = h_min_header
+        for i, col in enumerate(colunas):
+            largura_coluna = larguras[i] - cell_padding
+            largura_texto = pdf.get_string_width(str(col))
+            num_linhas = math.ceil(largura_texto / largura_coluna) if largura_coluna > 0 else 1 
+            h_calculada = num_linhas * h_header_base
+            max_h_header_local = max(max_h_header_local, h_calculada)
+        
+        y_start_header = pdf.get_y()
+        x_start = pdf.get_x()
+        largura_total_linha = sum(larguras)
+        
+        # Borda da linha do cabeçalho
+        pdf.cell(largura_total_linha, max_h_header_local, '', 1, 1) 
+        pdf.set_xy(x_start, y_start_header) 
+
+        current_x = x_start
+        for i, col in enumerate(colunas):
+            pdf.set_xy(current_x, y_start_header)
+            pdf.multi_cell(
+                larguras[i], 
+                h_header_base, 
+                str(col), 
+                0, # Sem borda
+                align='C'
+            )
+            current_x += larguras[i]
+        pdf.set_xy(x_start, y_start_header + max_h_header_local)
+        
+        return max_h_header_local # Retorna a altura para uso na quebra de página
+    # --- FIM DA FUNÇÃO INTERNA ---
+
+    # 1. Desenhar o Cabeçalho (Primeira vez)
+    max_h_header = draw_header_block(pdf, colunas, larguras, h_header_base, h_min_header)
+
+    # 2. Desenhar o Corpo da Tabela (Dados)
+    pdf.set_font('Arial', '', 10)
+    largura_total_linha = sum(larguras)
+    
+    for index, row in data_frame.iterrows():
+        max_h_data = h_min_data
+        
+        # CÁLCULO DA ALTURA MÁXIMA PARA A LINHA DE DADOS
+        for i, item in enumerate(row):
+            texto = str(item)
+            largura_coluna = larguras[i] - cell_padding
+            largura_texto = pdf.get_string_width(texto)
+            num_linhas = math.ceil(largura_texto / largura_coluna) if largura_coluna > 0 else 1 
+            h_calculada = num_linhas * h_data_base
+            max_h_data = max(max_h_data, h_calculada)
+        
+        # --- VERIFICAÇÃO DE QUEBRA DE PÁGINA ---
+        # Se a linha atual + rodapé for maior que o espaço restante, quebra a página.
+        if pdf.get_y() + max_h_data + FOOTER_HEIGHT > pdf.h - pdf.b_margin:
+            pdf.add_page()
+            # Redesenha o cabeçalho na nova página
+            draw_header_block(pdf, colunas, larguras, h_header_base, h_min_header)
+            pdf.set_font('Arial', '', 10) # Volta para a fonte dos dados
+        # --------------------------------------
+        
+        # DESENHO DA LINHA DE DADOS
+        y_start_data = pdf.get_y()
+        x_start = pdf.get_x()
+        
+        # Borda da linha de dados
+        pdf.cell(largura_total_linha, max_h_data, '', 1, 1) 
+        pdf.set_xy(x_start, y_start_data) 
+
+        current_x = x_start
+        for i, item in enumerate(row):
+            pdf.set_xy(current_x, y_start_data)
+            pdf.multi_cell(
+                larguras[i], 
+                h_data_base, 
+                str(item), 
+                0, # Sem borda
+                align=alinha[i]
+            )
+            current_x += larguras[i]
+            
+        pdf.set_xy(x_start, y_start_data + max_h_data)
+
 def gerar_pdf_levantamento(
     levantado,
     localidade,
@@ -40,89 +144,130 @@ def gerar_pdf_levantamento(
     ug=None
 ):
     """
-    Gera um relatório em PDF do levantamento patrimonial.
+    Gera um relatório em PDF do levantamento patrimonial com tabelas dinâmicas.
     """
-    # 1. Título do Relatório e Data
+    # 0. Preparação de Dados e Título
     titulo_relatorio = "Relatório de Levantamento"
     data_geracao = data_levantamento.strftime("%d de %B de %Y")
     if nao_levantados is None:
         nao_levantados = pd.DataFrame()
     if ug is None:
         ug = ""
+    # Se todos dados de 'acautelado para' forem NaN, remover a coluna
+    if levantado['acautelado para'].isna().all():
+        levantado = levantado.drop(columns=['acautelado para'], errors='ignore')
+    levantado = levantado.drop(columns=['especificacoes', 'localidade', 'ultimo levantamento'], errors='ignore')
+    # Capitalização e formatação dos nomes das colunas
+    for i, coluna in enumerate(levantado.columns):
+        coluna = coluna.capitalize().replace('_total', '').replace('_', '')
+        levantado.columns.values[i] = coluna
+    if nao_levantados['acautelado para'].isna().all():
+        nao_levantados = nao_levantados.drop(columns=['acautelado para'], errors='ignore')
+    nao_levantados = nao_levantados.drop(columns=['especificacoes', 'localidade'], errors='ignore')
+    
+
+    for i, coluna in enumerate(nao_levantados.columns):
+        coluna = coluna.capitalize().replace('_total', ' ').replace('_', ' ')
+        nao_levantados.columns.values[i] = coluna
+    # Retirar linhas se ano de 'ultimo levantamento' de não_levantados forem ano atual
+    ano_atual = dt.datetime.now().year
+    nao_levantados = nao_levantados[~nao_levantados['Ultimo levantamento'].astype(str).str.endswith(str(ano_atual))]
+
+    # 1. Conversão de Valor para Numérico
+    if 'Valor' in levantado.columns:
+        levantado['Valor'] = pd.to_numeric(
+            levantado['Valor'].astype(str).str.replace(',', '.', regex=False), # Se houver vírgula decimal
+            errors='coerce'
+        ).fillna(0) # Substitui NaN por 0 para a soma
+
+    if not nao_levantados.empty and 'Valor' in nao_levantados.columns:
+         nao_levantados['Valor'] = pd.to_numeric(
+            nao_levantados['Valor'].astype(str).str.replace(',', '.', regex=False),
+            errors='coerce'
+        ).fillna(0)
 
     # 2. Configuração do PDF
     pdf = FPDF()
     pdf.add_page()
+    
+    # 3. Título e Variáveis Iniciais
     pdf.set_font('Arial', 'B', 16)
-
-    # 3. Inserindo Variáveis
     pdf.cell(0, 10, titulo_relatorio, 0, 1, 'C')
+    
     pdf.set_font('Arial', '', 10)
     pdf.cell(0, 10, f'Gerado em: {data_geracao}', 0, 1)
     pdf.cell(0, 10, f'Localidade: {localidade}', 0, 1)
-    
-
     pdf.ln(5)
 
-    # 4. Inserindo o DataFrame como Tabela
-    pdf.set_font('Arial', 'B', 10)
+    # 4. Cálculo de Larguras da Tabela
     colunas = levantado.columns
-
-    # Corrige cálculo das larguras das células
-    margem_esquerda = pdf.l_margin
-    margem_direita = pdf.r_margin
-    largura_total = pdf.w - margem_esquerda - margem_direita
+    largura_total = pdf.w - pdf.l_margin - pdf.r_margin
     larguras = [largura_total / len(colunas) for _ in colunas]
     alinha = ['L'] * len(colunas)
 
-    # Cabeçalho da Tabela
-    for i, col in enumerate(colunas):
-        pdf.cell(larguras[i], 7, str(col), 1, 0, 'C')
-    pdf.ln()
-
-    # Dados de bens levantados como tabela
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(0, 10, f'{levantado.shape[0]} Bens Levantados', 0, 1, 'C')
-    # valor total dos bens levantados
-    valor_total_levantados = levantado['valor'].sum()
-    pdf.cell(0, 10, valor_total_levantados, 0, 1, 'C')
-    pdf.ln(5)
-    for _, row in levantado.iterrows():
-        for i, item in enumerate(row):
-            pdf.cell(larguras[i], 6, str(item), 1, 0, alinha[i])
-        pdf.ln()
-
-    # Dados de bens não levantados
-    pdf.ln(10)
+    # 5. Tabela de Bens Levantados (USO DA FUNÇÃO MESTRA)
+    
+    # TÍTULO E ESTATÍSTICA
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, f'{nao_levantados.shape[0]} Bens Não Levantados', 0, 1, 'C')
-    # valor total dos bens não levantados
-    valor_total_nao_levantados = nao_levantados['valor'].sum()
-    pdf.cell(0, 10, valor_total_nao_levantados, 0, 1, 'C')
+    valor_total_levantados = levantado['Valor'].sum()
+    pdf.cell(0, 10, f'{levantado.shape[0]} Bens Levantados', 0, 1, 'C')
+    pdf.cell(0, 10, f'Valor Total: R$ {float(valor_total_levantados):,.2f}', 0, 1, 'C')
     pdf.ln(5)
-    pdf.set_font('Arial', '', 10)
-    if not nao_levantados.empty:
-        for _, row in nao_levantados.iterrows():
-            for i, item in enumerate(row):
-                pdf.cell(larguras[i], 6, str(item), 1, 0, alinha[i])
-            pdf.ln()
 
-    # incluir imagem da assinatura ao pdf
+    draw_dynamic_table(pdf, levantado, larguras, colunas, alinha)
+
+    # 6. Tabela de Bens Não Levantados (USO DA FUNÇÃO MESTRA)
+
+    pdf.ln(10)
+    
+    # TÍTULO E ESTATÍSTICA
+    pdf.set_font('Arial', 'B', 12)
+    valor_total_nao_levantados = nao_levantados['Valor'].sum()
+    pdf.cell(0, 10, f'{nao_levantados.shape[0]} Bens Não Levantados', 0, 1, 'C')
+    pdf.cell(0, 10, f'Valor Total: R$ {float(valor_total_nao_levantados):,.2f}', 0, 1, 'C')
+    pdf.ln(5)
+    
+    if not nao_levantados.empty:
+        # Chamada única: cabeçalho e dados agora
+        draw_dynamic_table(pdf, nao_levantados, larguras, colunas, alinha)
+
+
+    # 7. Rodapé e Assinatura
+    pdf.ln(10)
+    pdf.set_font('Arial', '', 10)
+    
     pdf.cell(0, 10, f'Acompanhamento: {acompanhamento}', 0, 1)
     pdf.cell(0, 10, f'Matrícula: {matricula}', 0, 1)
+    
     if assinatura is not None:
-        # Salvar a imagem temporariamente
-        img_array = np.array(assinatura)
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-        cv2.imwrite(temp_file.name, img_array)
-        pdf.image(temp_file.name, x=10, y=pdf.get_y(), w=100)
-        
+        # Lógica para inclusão da imagem da assinatura
+        try:
+            # Salvar a imagem temporariamente
+            img_array = np.array(assinatura)
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            cv2.imwrite(temp_file.name, img_array)
+            pdf.image(temp_file.name, x=10, y=pdf.get_y(), w=100)
+            
+            # Adiciona um espaço após a imagem
+            pdf.ln(30) 
+        except Exception as e:
+            # Em caso de erro na imagem, apenas pula a linha
+            print(f"Erro ao incluir assinatura: {e}")
+            pdf.ln(10)
+            
     pdf.cell(0, 10, f'Responsável levantamento: {responsavel}', 0, 1)
 
-    # 5. Salvar o PDF
+    # 8. Salvar o PDF
     file_path = f"data_gold/{ug}/{localidade}.pdf"
+    
+    # É bom garantir que o diretório exista antes de salvar
+    # import os
+    # os.makedirs(f"data_gold/{ug}", exist_ok=True)
+    
     pdf.output(file_path)
     st.success(f"PDF '{file_path}' gerado com sucesso!")
+    
+    return file_path # Retorna o caminho do arquivo para facilitar o uso externo
 
 def tela_relatorio_levantamento():
     st.set_page_config(
@@ -171,7 +316,7 @@ def tela_relatorio_levantamento():
             # excluir bens alienados, anulados ou desmembrados
             df_nao_levantado = df_localidade[~df_localidade['status'].isin(['ALIENADO', 'ANULADO', 'DESMEMBRADO'])]
             #excluir os bens que já foram inventariados
-            df_nao_levantado = df_nao_levantado[~df_nao_levantado['num tombamento'].isin(st.session_state.df_inventario['num tombamento'].values)]
+            df_nao_levantado = df_nao_levantado[~df_nao_levantado['num tombamento'].isin(bens_levantados)]
             st.session_state.df_localidade = df_localidade
             st.subheader(f"{df_nao_levantado.shape[0]} Bem(ns) não levantados em {localidade_escolhida}")
             st.markdown(f'Valor: R$ {df_nao_levantado["valor"].replace(",",".").astype(float).sum():,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
