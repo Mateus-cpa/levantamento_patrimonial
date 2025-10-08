@@ -156,7 +156,7 @@ def gerar_pdf_levantamento(
     # Se todos dados de 'acautelado para' forem NaN, remover a coluna
     if levantado['acautelado para'].isna().all():
         levantado = levantado.drop(columns=['acautelado para'], errors='ignore')
-    levantado = levantado.drop(columns=['especificacoes', 'localidade', 'ultimo levantamento'], errors='ignore')
+    levantado = levantado.drop(columns=['especificacoes', 'localidade'], errors='ignore')
     # Capitalização e formatação dos nomes das colunas
     for i, coluna in enumerate(levantado.columns):
         coluna = coluna.capitalize().replace('_total', '').replace('_', '')
@@ -200,11 +200,18 @@ def gerar_pdf_levantamento(
     pdf.ln(5)
 
     # 4. Cálculo de Larguras da Tabela
-    colunas = levantado.columns
-    largura_total = pdf.w - pdf.l_margin - pdf.r_margin
-    larguras = [largura_total / len(colunas) for _ in colunas]
-    alinha = ['L'] * len(colunas)
+    # A largura total é fixa (largura da página - margens)
+    largura_total = pdf.w - pdf.l_margin - pdf.r_margin 
 
+    # --- 4.1. CÁLCULO PARA LEVANTADO ---
+    colunas_levantado = levantado.columns
+    if len(colunas_levantado) > 0:
+        larguras_levantado = [largura_total / len(colunas_levantado) for _ in colunas_levantado]
+        alinha_levantado = ['L'] * len(colunas_levantado)
+    else:
+        # Caso extremo de 0 colunas (apenas para evitar ZeroDivisionError)
+        larguras_levantado = []
+        alinha_levantado = []
     # 5. Tabela de Bens Levantados (USO DA FUNÇÃO MESTRA)
     
     # TÍTULO E ESTATÍSTICA
@@ -214,7 +221,10 @@ def gerar_pdf_levantamento(
     pdf.cell(0, 10, f'Valor Total: R$ {float(valor_total_levantados):,.2f}', 0, 1, 'C')
     pdf.ln(5)
 
-    draw_dynamic_table(pdf, levantado, larguras, colunas, alinha)
+    if len(colunas_levantado) > 0:
+    # Usando os parâmetros específicos para levantado
+        draw_dynamic_table(pdf, levantado, larguras_levantado, colunas_levantado, alinha_levantado)
+
 
     # 6. Tabela de Bens Não Levantados (USO DA FUNÇÃO MESTRA)
 
@@ -228,8 +238,14 @@ def gerar_pdf_levantamento(
     pdf.ln(5)
     
     if not nao_levantados.empty:
-        # Chamada única: cabeçalho e dados agora
-        draw_dynamic_table(pdf, nao_levantados, larguras, colunas, alinha)
+        # --- 6.1. CÁLCULO PARA NÃO LEVANTADOS ---
+        colunas_nao_levantados = nao_levantados.columns
+        if len(colunas_nao_levantados) > 0:
+            larguras_nao_levantados = [largura_total / len(colunas_nao_levantados) for _ in colunas_nao_levantados]
+            alinha_nao_levantados = ['L'] * len(colunas_nao_levantados)
+            
+            # Chamada única: cabeçalho e dados agora
+            draw_dynamic_table(pdf, nao_levantados, larguras_nao_levantados, colunas_nao_levantados, alinha_nao_levantados)
 
 
     # 7. Rodapé e Assinatura
