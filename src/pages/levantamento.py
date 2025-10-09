@@ -7,7 +7,7 @@ import datetime as dt
 from streamlit_drawable_canvas import st_canvas
 
 
-from pages.relatorio_levantamento import gerar_pdf_levantamento
+from pages.relatorio_levantamento import gerar_pdf_levantamento, coletar_assinatura
 from levantamento.gerar_etiqueta import gerar_etiquetas
 
 #Funções auxiliares
@@ -204,25 +204,6 @@ def selecionar_localidade(localidades):
     st.session_state.acompanhamento = st.text_input("Acompanhamento inventário")
     st.session_state.matricula = st.number_input("Matrícula do Acompanhamento", placeholder="Digite a matrícula", format="%d",step=1)
 
-def coletar_assinatura():
-    st.session_state.assinatura = None
-
-    #coletar assinatura por caneta/desenho
-    assinatura = st_canvas(
-                fill_color="rgba(255, 255, 255, 0)",  # Transparent background
-                stroke_width=2,
-                stroke_color="#000000",
-                        background_color="#fff",
-                        height=150,
-                        width=400,
-                        drawing_mode="freedraw",
-                        key="assinatura_canvas"
-                        )
-    if assinatura.image_data is not None:
-        st.session_state.assinatura = assinatura.image_data
-        assinatura_final = st.image(st.session_state.assinatura)
-    return assinatura_final
-    
 
 # --- Tela de Input de Dados ---
 def tela_input_dados(df):
@@ -365,7 +346,7 @@ def tela_input_dados(df):
     st.subheader(f"{df_localidade.shape[0]} Bem(ns) a inventariar em {st.session_state.localidade_escolhida[0]}")    
     # valor total  em vermelho
     st.markdown(f"#### Valor total dos bens a inventariar: :red[R$ {df_localidade['valor'].sum():,.2f}]")
-    st.dataframe(df_localidade[colunas_de_interesse], 
+    st.dataframe(df_localidade[colunas_de_interesse].drop(columns=['num tombamento','localidade']), 
                 use_container_width=True)
 
     st.divider()
@@ -380,9 +361,7 @@ def tela_input_dados(df):
             st.success(f"Etiquetas impressas com sucesso em {st.session_state.localidade_escolhida[0]}!")
         st.divider()
 
-    # -- Assinatura --
-    st.subheader("Assine no campo abaixo:")
-    coletar_assinatura()
+    
     
     # -- Concluir levantamento --
     botao_concluir = st.button("Concluir Levantamento")
@@ -402,21 +381,10 @@ def tela_input_dados(df):
             label="Baixar inventário em TXT",
             data=conteudo_arquivo,
             file_name=path_destino.split('/')[-1],
-            mime='text/plain'
-        )
-        
-        assinatura = coletar_assinatura()
-        if assinatura.image_data is not None:
-            st.session_state.assinatura = assinatura.image_data
-            gerar_pdf_levantamento(
-                levantado=st.session_state.df_inventario,
-                localidade=st.session_state.localidade_escolhida[0],
-                acompanhamento=st.session_state.acompanhamento,
-                matricula=st.session_state.matricula,
-                assinatura=st.session_state.assinatura,
-                responsavel=st.session_state.username,  # novo parâmetro
-                data_levantamento=dt.datetime.now()     # novo parâmetro
-            )
+            mime='text/plain')
+        botao_finalizar = st.button("Finalizar Levantamento e Gerar Relatório")
+        if botao_finalizar:
+            st.switch_page('pages/relatorio_levantamento.py')
         
     
 #configurar página wide
