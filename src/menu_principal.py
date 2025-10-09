@@ -41,17 +41,21 @@ def get_users_from_env():
 
 def menu_navegacao():
     st.subheader('## Ir para:')
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    col_levantamento, col_relatorio, col_atualizar, col_status = st.columns(4)
+    with col_levantamento:
         botao_levantamento = st.button("Levantamento")
         if botao_levantamento:
             st.switch_page(f"pages/levantamento.py")
-    with col2:
+    with col_status:
         if os.path.exists(f'data_bronze/lista_bens-processado-{st.session_state.selected_ug}.csv'):
             botao_status = st.button("Status do Levantamento")
             if botao_status:
                 st.switch_page(f"pages/status_levantamento.py")
-    with col3:
+    with col_relatorio:
+        botao_relatorio = st.button("Relatório do Levantamento")
+        if botao_relatorio:
+            st.switch_page(f"pages/relatorio_levantamento.py")
+    with col_atualizar:
         if st.session_state.username == 'admin':
             botao_atualizar = st.button("Atualizar Base")
             if botao_atualizar:
