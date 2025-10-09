@@ -354,52 +354,53 @@ def pagina_principal():
             df_levantamento_historico_geral.drop(columns=['perc_levantado'], inplace=True)
 
             #guardar o valor máximo entre qtde levantada e levantamento estimado
-            valor_maximo = df_levantamento_historico_geral[['qtde_levantado','levantamento_estimado']].max().max()
-            # -- GRÁFICO HISTÓRICO LEVANTAMENTO --
-            linha_levantamento = alt.Chart(df_levantamento_historico_geral).mark_line(color='blue').encode(
-                x=alt.X('data_levantamento:T', title='Data do Levantamento'),
-                y=alt.Y('qtde_levantado:Q', title='Quantidade Levantada', scale=alt.Scale(domain=[0, valor_maximo])),
-                tooltip=['data_levantamento', 'qtde_levantado']
-            ).properties(
-                width=800,
-                height=400
-            )
-            # Adicionar a linha de levantamento estimado
-            linha_estimativa = alt.Chart(df_levantamento_historico_geral).mark_line(color='red').encode(
-                x=alt.X('data_levantamento:T', title='Data do Levantamento'),
-                y=alt.Y('levantamento_estimado:Q', title='Levantamento Estimado', scale=alt.Scale(domain=[0, valor_maximo])),
-                tooltip=['data_levantamento', 'levantamento_estimado']
-            ).properties(
-                width=800,
-                height=400
-            )
-            # Adicionar rótulos com os valores da quantidade levantada
-            text = alt.Chart(df_levantamento_historico_geral).mark_text(
-                align='center',
-                baseline='bottom', # Alterado para 'bottom' para posicionar acima da área
-                dy=-5  # Ajusta a posição vertical do texto
-            ).encode(
-                x=alt.X('data_levantamento:T'),
-                y=alt.Y('qtde_levantado:Q'),
-                text=alt.Text('qtde_levantado:Q'),  # Exibe os valores
-                color=alt.value('black') # Define a cor do texto
-            )
-            # Mergir os três gráficos (área, linha e texto) e aplicar a configuração de grade
-            grafico_levantamento = (linha_levantamento + linha_estimativa 
-                                    ).configure_axis(grid=True
-                                                     ).configure_view(stroke='transparent',
-                                                                      fill='white')
-            # Exibir o gráfico no Streamlit
-            st.markdown("""
-                        <h2 style='text-align: center;'>
-                            Histórico de 
-                            <span style='color: blue;'>Levantamento</span>
-                            e 
-                            <span style='color: red;'>Estimado</span>
-                        </h2>
-                        <hr style='border: 1px solid #ccc;'>
-                        """, unsafe_allow_html=True)
-            st.altair_chart(grafico_levantamento, use_container_width=True)
+            if not df_levantamento_historico_geral.empty:
+                valor_maximo = df_levantamento_historico_geral[['qtde_levantado','levantamento_estimado']].max().max()
+                # -- GRÁFICO HISTÓRICO LEVANTAMENTO --
+                linha_levantamento = alt.Chart(df_levantamento_historico_geral).mark_line(color='blue').encode(
+                    x=alt.X('data_levantamento:T', title='Data do Levantamento'),
+                    y=alt.Y('qtde_levantado:Q', title='Quantidade Levantada', scale=alt.Scale(domain=[0, valor_maximo])),
+                    tooltip=['data_levantamento', 'qtde_levantado']
+                ).properties(
+                    width=800,
+                    height=400
+                )
+                # Adicionar a linha de levantamento estimado
+                linha_estimativa = alt.Chart(df_levantamento_historico_geral).mark_line(color='red').encode(
+                    x=alt.X('data_levantamento:T', title='Data do Levantamento'),
+                    y=alt.Y('levantamento_estimado:Q', title='Levantamento Estimado', scale=alt.Scale(domain=[0, valor_maximo])),
+                    tooltip=['data_levantamento', 'levantamento_estimado']
+                ).properties(
+                    width=800,
+                    height=400
+                )
+                # Adicionar rótulos com os valores da quantidade levantada
+                text = alt.Chart(df_levantamento_historico_geral).mark_text(
+                    align='center',
+                    baseline='bottom', # Alterado para 'bottom' para posicionar acima da área
+                    dy=-5  # Ajusta a posição vertical do texto
+                ).encode(
+                    x=alt.X('data_levantamento:T'),
+                    y=alt.Y('qtde_levantado:Q'),
+                    text=alt.Text('qtde_levantado:Q'),  # Exibe os valores
+                    color=alt.value('black') # Define a cor do texto
+                )
+                # Mergir os três gráficos (área, linha e texto) e aplicar a configuração de grade
+                grafico_levantamento = (linha_levantamento + linha_estimativa 
+                                        ).configure_axis(grid=True
+                                                        ).configure_view(stroke='transparent',
+                                                                        fill='white')
+                # Exibir o gráfico no Streamlit
+                st.markdown("""
+                            <h2 style='text-align: center;'>
+                                Histórico de 
+                                <span style='color: blue;'>Levantamento</span>
+                                e 
+                                <span style='color: red;'>Estimado</span>
+                            </h2>
+                            <hr style='border: 1px solid #ccc;'>
+                            """, unsafe_allow_html=True)
+                st.altair_chart(grafico_levantamento, use_container_width=True)
 
             # -- DATAFRAME --
             st.dataframe(df)
