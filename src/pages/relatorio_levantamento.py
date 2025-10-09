@@ -30,7 +30,6 @@ def coletar_assinatura():
     return canvas_result
 
 # --- FUNÇÕES AUXILIARES ---
-
 def draw_dynamic_table(pdf, data_frame, larguras, colunas, alinha):
     """
     Desenha o cabeçalho e os dados de uma tabela com altura de linha dinâmica e 
@@ -311,6 +310,8 @@ def tela_relatorio_levantamento():
         
 
         # Obter localidade_escolhida de lista de arquivos txt em data_gold
+        if os.path.exists(f'data_gold/{st.session_state.selected_ug}') == False:
+            os.makedirs(f'data_gold/{st.session_state.selected_ug}')
         localidades_levantadas = [file.replace('.txt', '') for file in os.listdir(f'data_gold/{st.session_state.selected_ug}') if file.endswith('.txt')]
         localidade_escolhida = st.selectbox("Localidade", ['Escolha uma localidade'] + localidades_levantadas, key="localidade_escolha")
 
