@@ -341,8 +341,10 @@ def tela_relatorio_levantamento():
 
             # Acompanhamento
             st.subheader("Acompanhamento")
-            acompanhamento = st.text_input("Nome do Acompanhamento", value="")
-            matricula = st.number_input("Matrícula do Acompanhamento", placeholder="Digite a matrícula", format="%d",step=1)
+            col_nome, col_matricula = st.columns([0.7,0.3])
+            acompanhamento = col_nome.text_input("Nome do responsável pelo acompanhamento", value="")
+            matricula = col_matricula.number_input("Matrícula", placeholder="Digite a matrícula", format="%d",step=1)
+            st.write("*Assinatura*")
             coletar_assinatura() # coletar assinatura com desenho de caneta
 
 
