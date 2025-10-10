@@ -4,10 +4,7 @@ import datetime as dt
 import streamlit as st
 import pandas as pd
 import datetime as dt
-from streamlit_drawable_canvas import st_canvas
 
-
-from pages.relatorio_levantamento import gerar_pdf_levantamento, coletar_assinatura
 from levantamento.gerar_etiqueta import gerar_etiquetas
 
 #Funções auxiliares
@@ -201,8 +198,7 @@ def selecionar_localidade(localidades):
         localidade_escolhida = f'{unidade_patrimonial} - {localidade_escolhida}'
     
     st.session_state.localidade_escolhida = localidade_escolhida
-    st.session_state.acompanhamento = st.text_input("Acompanhamento inventário")
-    st.session_state.matricula = st.number_input("Matrícula do Acompanhamento", placeholder="Digite a matrícula", format="%d",step=1)
+    
 
 
 # --- Tela de Input de Dados ---
@@ -364,8 +360,8 @@ def tela_input_dados(df):
     
     
     # -- Concluir levantamento --
-    botao_concluir = st.button("Concluir Levantamento")
-    if botao_concluir:
+    botao_gerar_txt = st.button("Gerar arquivo TXT do inventário")
+    if botao_gerar_txt:
         # Transformar st.session_state.df_inventario em txt
         localidade_final = st.session_state.localidade_escolhida[0].replace('/','-')
         if not os.path.exists(f'data_gold/{st.session_state.selected_ug}'):
@@ -382,9 +378,9 @@ def tela_input_dados(df):
             data=conteudo_arquivo,
             file_name=path_destino.split('/')[-1],
             mime='text/plain')
-        botao_finalizar = st.button("Finalizar Levantamento e Gerar Relatório")
-        if botao_finalizar:
-            st.switch_page('pages/relatorio_levantamento.py')
+    botao_finalizar = st.button("Finalizar Levantamento e Gerar Relatório")
+    if botao_finalizar:
+        st.switch_page('pages/relatorio_levantamento.py')
         
     
 #configurar página wide
