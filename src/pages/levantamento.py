@@ -292,7 +292,7 @@ def tela_input_dados(df):
         resultados_busca = encontrar_indice_por_id(df = df, 
                                                    id_busca = st.session_state.id)
         exibir_detalhes_patrimonio(df, resultados_busca)
-        st.code(f'st.session_state.id:{st.session_state.id}')
+        #st.code(f'st.session_state.id:{st.session_state.id}')
                 
     st.divider()
     

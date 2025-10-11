@@ -140,6 +140,7 @@ def gerar_pdf_levantamento(
     responsavel,
     data_levantamento,
     nao_levantados=None,
+    levantado_outro_levantamento=None,
     ug=None
 ):
     """
@@ -152,25 +153,19 @@ def gerar_pdf_levantamento(
         nao_levantados = pd.DataFrame()
     if ug is None:
         ug = ""
-    # Se todos dados de 'acautelado para' forem NaN, remover a coluna
-    if levantado['acautelado para'].isna().all():
-        levantado = levantado.drop(columns=['acautelado para'], errors='ignore')
-    levantado = levantado.drop(columns=['especificacoes', 'localidade'], errors='ignore')
-    # Capitalização e formatação dos nomes das colunas
-    for i, coluna in enumerate(levantado.columns):
-        coluna = coluna.capitalize().replace('_total', '').replace('_', '')
-        levantado.columns.values[i] = coluna
-    if nao_levantados['acautelado para'].isna().all():
-        nao_levantados = nao_levantados.drop(columns=['acautelado para'], errors='ignore')
-    nao_levantados = nao_levantados.drop(columns=['especificacoes', 'localidade'], errors='ignore')
     
-
-    for i, coluna in enumerate(nao_levantados.columns):
-        coluna = coluna.capitalize().replace('_total', ' ').replace('_', ' ')
-        nao_levantados.columns.values[i] = coluna
-    # Retirar linhas se ano de 'ultimo levantamento' de não_levantados forem ano atual
-    ano_atual = dt.datetime.now().year
-    nao_levantados = nao_levantados[~nao_levantados['Ultimo levantamento'].astype(str).str.endswith(str(ano_atual))]
+    # Trata colunas de dataframes
+    dfs = [levantado, nao_levantados, levantado_outro_levantamento]
+    for df in dfs:
+        # Retirar colunas em excesso
+        if df is not None and 'acautelado para' in df.columns and df['acautelado para'].isna().all():
+            df.drop(columns=['acautelado para'], inplace=True, errors='ignore')
+        df.drop(columns=['especificacoes', 'localidade', 'tombo_antigo'], inplace=True, errors='ignore')
+        # Capitalização e formatação dos nomes das colunas
+        for i, coluna in enumerate(df.columns):
+            coluna = coluna.capitalize().replace('_total', '').replace('_', '')
+            df.columns.values[i] = coluna
+    
 
     # 1. Conversão de Valor para Numérico
     if 'Valor' in levantado.columns:
@@ -182,6 +177,12 @@ def gerar_pdf_levantamento(
     if not nao_levantados.empty and 'Valor' in nao_levantados.columns:
          nao_levantados['Valor'] = pd.to_numeric(
             nao_levantados['Valor'].astype(str).str.replace(',', '.', regex=False),
+            errors='coerce'
+        ).fillna(0)
+    
+    if not levantado_outro_levantamento.empty and 'Valor' in levantado_outro_levantamento.columns:
+         levantado_outro_levantamento['Valor'] = pd.to_numeric(
+            levantado_outro_levantamento['Valor'].astype(str).str.replace(',', '.', regex=False),
             errors='coerce'
         ).fillna(0)
 
@@ -212,11 +213,12 @@ def gerar_pdf_levantamento(
         larguras_levantado = []
         alinha_levantado = []
     # 5. Tabela de Bens Levantados (USO DA FUNÇÃO MESTRA)
-    
-    # TÍTULO E ESTATÍSTICA
     pdf.set_font('Arial', 'B', 12)
     valor_total_levantados = levantado['Valor'].sum()
-    pdf.cell(0, 10, f'{levantado.shape[0]} Bens Levantados', 0, 1, 'C')
+    if levantado.shape[0] > 1:
+        pdf.cell(0, 10, f'{levantado.shape[0]} Bens Levantados', 0, 1, 'C')
+    else:
+        pdf.cell(0, 10, f'{levantado.shape[0]} Bem Levantado', 0, 1, 'C')
     pdf.cell(0, 10, f'Valor Total: R$ {float(valor_total_levantados):,.2f}', 0, 1, 'C')
     pdf.ln(5)
 
@@ -224,15 +226,15 @@ def gerar_pdf_levantamento(
     # Usando os parâmetros específicos para levantado
         draw_dynamic_table(pdf, levantado, larguras_levantado, colunas_levantado, alinha_levantado)
 
+    pdf.ln(10)
 
     # 6. Tabela de Bens Não Levantados (USO DA FUNÇÃO MESTRA)
-
-    pdf.ln(10)
-    
-    # TÍTULO E ESTATÍSTICA
     pdf.set_font('Arial', 'B', 12)
     valor_total_nao_levantados = nao_levantados['Valor'].sum()
-    pdf.cell(0, 10, f'{nao_levantados.shape[0]} Bens Não Levantados', 0, 1, 'C')
+    if nao_levantados.shape[0] > 1:
+        pdf.cell(0, 10, f'{nao_levantados.shape[0]} Bens NÃO Levantados', 0, 1, 'C')
+    else:
+        pdf.cell(0, 10, f'{nao_levantados.shape[0]} Bem NÃO Levantado', 0, 1, 'C')
     pdf.cell(0, 10, f'Valor Total: R$ {float(valor_total_nao_levantados):,.2f}', 0, 1, 'C')
     pdf.ln(5)
     
@@ -246,12 +248,32 @@ def gerar_pdf_levantamento(
             # Chamada única: cabeçalho e dados agora
             draw_dynamic_table(pdf, nao_levantados, larguras_nao_levantados, colunas_nao_levantados, alinha_nao_levantados)
 
+    # 7. Tabela de Bens Levantados em Outro Levantamento (USO DA FUNÇÃO MESTRA)
+    if not levantado_outro_levantamento.empty:
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 12)
+        valor_total_outro_levantamento = levantado_outro_levantamento['Valor'].sum()
+        if levantado_outro_levantamento.shape[0] > 1:
+            pdf.cell(0, 10, f'{levantado_outro_levantamento.shape[0]} Bens levantados em outra Localidade', 0, 1, 'C')
+        else:
+            pdf.cell(0, 10, f'{levantado_outro_levantamento.shape[0]} Bem levantado em outra Localidade', 0, 1, 'C')
+        pdf.cell(0, 10, f'Valor Total: R$ {float(valor_total_outro_levantamento):,.2f}', 0, 1, 'C')
+        pdf.ln(5)
+        
+        # --- 7.1. CÁLCULO PARA LEVANTADOS EM OUTRO LEVANTAMENTO ---
+        colunas_outro_levantamento = levantado_outro_levantamento.columns
+        if len(colunas_outro_levantamento) > 0:
+            larguras_outro_levantamento = [largura_total / len(colunas_outro_levantamento) for _ in colunas_outro_levantamento]
+            alinha_outro_levantamento = ['L'] * len(colunas_outro_levantamento)
+            
+            # Chamada única: cabeçalho e dados agora
+            draw_dynamic_table(pdf, levantado_outro_levantamento, larguras_outro_levantamento, colunas_outro_levantamento, alinha_outro_levantamento)
 
-    # 7. Rodapé e Assinatura
+    # 8. Rodapé e Assinatura
     pdf.ln(10)
     pdf.set_font('Arial', '', 10)
     
-    pdf.cell(0, 10, f'Acompanhamento: {acompanhamento}', 0, 1)
+    pdf.cell(0, 10, f'Responsável pelo Acompanhamento: {acompanhamento}', 0, 1)
     pdf.cell(0, 10, f'Matrícula: {matricula}', 0, 1)
     
     if assinatura is not None:
@@ -270,7 +292,7 @@ def gerar_pdf_levantamento(
             print(f"Erro ao incluir assinatura: {e}")
             pdf.ln(10)
             
-    pdf.cell(0, 10, f'Responsável levantamento: {responsavel}', 0, 1)
+    pdf.cell(0, 10, f'Responsável pelo levantamento: {responsavel}', 0, 1)
 
     # 8. Salvar o PDF
     file_path = f"data_gold/{ug}/{localidade}.pdf"
@@ -334,10 +356,24 @@ def tela_relatorio_levantamento():
             df_nao_levantado = df_localidade[~df_localidade['status'].isin(['ALIENADO', 'ANULADO', 'DESMEMBRADO'])]
             #excluir os bens que já foram inventariados
             df_nao_levantado = df_nao_levantado[~df_nao_levantado['num tombamento'].isin(bens_levantados)]
-            st.session_state.df_localidade = df_localidade
+
+            # Retirar linhas se ano de 'ultimo levantamento' de não_levantados forem ano atual
+            ano_atual = dt.datetime.now().year
+            df_levantado_outro_levantamento = df_nao_levantado[df_nao_levantado['ultimo levantamento'].astype(str).str.endswith(str(ano_atual))]
+            df_nao_levantado = df_nao_levantado[~df_nao_levantado['ultimo levantamento'].astype(str).str.endswith(str(ano_atual))]
+
             st.subheader(f"{df_nao_levantado.shape[0]} Bem(ns) não levantados em {localidade_escolhida}")
             st.markdown(f'Valor: R$ {df_nao_levantado["valor"].replace(",",".").astype(float).sum():,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
-            st.dataframe(df_nao_levantado[st.session_state.colunas_de_interesse], width='stretch')
+            
+            # Não levantado
+            df_nao_levantado = df_nao_levantado[st.session_state.colunas_de_interesse]
+            st.dataframe(df_nao_levantado, width='stretch')
+            
+            # Levantado em outro levantamento
+            st.subheader(f"{df_levantado_outro_levantamento.shape[0]} Bem(ns) de {localidade_escolhida} levantados em outra localidade")
+            st.markdown(f'Valor: R$ {df_levantado_outro_levantamento["valor"].replace(",",".").astype(float).sum():,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
+            df_levantado_outro_levantamento = df_levantado_outro_levantamento[st.session_state.colunas_de_interesse]
+            st.dataframe(df_levantado_outro_levantamento, width='stretch')
 
             # Acompanhamento
             st.subheader("Acompanhamento")
@@ -357,7 +393,8 @@ def tela_relatorio_levantamento():
                     assinatura=st.session_state.get('assinatura', None),
                     responsavel=st.session_state.get('username', 'Desconhecido'),
                     data_levantamento=dt.datetime.now(),
-                    nao_levantados=df_nao_levantado[st.session_state.colunas_de_interesse],
+                    nao_levantados=df_nao_levantado,
+                    levantado_outro_levantamento = df_levantado_outro_levantamento,
                     ug=st.session_state.selected_ug
                 )
                 with open(f"data_gold/{st.session_state.selected_ug}/{localidade_escolhida}.pdf", "rb") as file:
