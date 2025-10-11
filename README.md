@@ -12,6 +12,7 @@
 
 Ativa ambiente virtual
 ```bash
+deactivate # Desativa venv atual
 rm -r .venv
 pyenv local 3.10.11
 poetry init
