@@ -199,13 +199,20 @@ def selecionar_localidade(localidades):
     
     st.session_state.localidade_escolhida = localidade_escolhida
     
-
+def limpar_id_input():
+    if 'id_input' in st.session_state:
+        st.session_state.id = st.session_state['id_input']
+        st.session_state['id_input'] = ''
 
 # --- Tela de Input de Dados ---
 def tela_input_dados(df):
 
     # -- configurações iniciais --
     colunas_de_interesse = st.session_state.colunas_de_interesse
+    if 'id_input' not in st.session_state:
+        st.session_state['id_input'] = ''
+    if 'id' not in st.session_state:
+        st.session_state.id = ''
 
     st.title("Levantamento Patrimonial - " + st.session_state.selected_ug)
     if 'df_inventario' not in st.session_state:
@@ -223,16 +230,19 @@ def tela_input_dados(df):
     # -- Inserção de dados --
     st.subheader("Inserir Dados do Patrimônio")
     busca = st.segmented_control('Buscar por:', ['ID', 'Cautela', 'Características'], key="busca", selection_mode="single", default="ID")
-    id, index_cautela, index_caracteristicas = '', [], []
+    index_cautela, index_caracteristicas = [], []
+
     # -- Campos de entrada --
+    
     if busca == 'ID':
-        id = st.text_input("Id. do Patrimônio (Nº Patrimônio, Tombo Antigo ou Nº Serial)", 
-                        key="id_input")
-                        #, on_change=limpar_session_state, args=('id_input',))
+        _ = st.text_input("Id. do Patrimônio (Nº Patrimônio, Tombo Antigo ou Nº Serial)", 
+                            key="id_input",
+                            on_change=limpar_id_input)
         
     if busca == 'Cautela':
         detentor = st.selectbox("Adicionar bens de detentor", df['acautelado para'].unique(), key="detentor")
         index_cautela = df[df['acautelado para'] == detentor].index.tolist()
+    
     if busca == 'Características':
         st.info('Digite "Não informado" para buscar por itens sem essa característica.')
         col1, col2 = st.columns(2)
@@ -278,11 +288,12 @@ def tela_input_dados(df):
         detentor = 'nan'
     elif len(index_caracteristicas) > 0: #retorna resultados por características
         resultados_busca = escolhe_dentre_resultados(index = index_caracteristicas, df = df.loc[index_caracteristicas])
-    elif id != '':
-        resultados_busca = encontrar_indice_por_id(df=df, id_busca=id)
+    elif st.session_state.id != '': #retorna resultados por id
+        resultados_busca = encontrar_indice_por_id(df = df, 
+                                                   id_busca = st.session_state.id)
         exibir_detalhes_patrimonio(df, resultados_busca)
-    
-    
+        st.code(f'st.session_state.id:{st.session_state.id}')
+                
     st.divider()
     
     
@@ -307,7 +318,7 @@ def tela_input_dados(df):
         other_cols = [col for col in cols if (col not in first_cols)]
         cols = first_cols + other_cols
         df_etiquetas = st.data_editor(df_inventario, 
-                                      use_container_width=True,
+                                      width='stretch',
                                       hide_index=True,
                                       column_order=cols,)
         col_etiq, col_excluir, col_3 = st.columns(3)
@@ -343,7 +354,7 @@ def tela_input_dados(df):
     # valor total  em vermelho
     st.markdown(f"#### Valor total dos bens a inventariar: :red[R$ {df_localidade['valor'].sum():,.2f}]")
     st.dataframe(df_localidade[colunas_de_interesse].drop(columns=['num tombamento','localidade']), 
-                use_container_width=True)
+                width='stretch')
 
     st.divider()
     
@@ -351,7 +362,7 @@ def tela_input_dados(df):
     if len(st.session_state.gerar_etiquetas) > 0:
         st.subheader("Etiquetas a gerar:")
         df_gerar_etiquetas = df[df['num tombamento'].isin(st.session_state.gerar_etiquetas)][colunas_de_interesse]
-        st.dataframe(df_gerar_etiquetas, use_container_width=True)
+        st.dataframe(df_gerar_etiquetas, width='stretch')
         if st.button("Imprimir etiquetas"):
             gerar_etiquetas(st.session_state.gerar_etiquetas, st.session_state.localidade_escolhida[0])
             st.success(f"Etiquetas impressas com sucesso em {st.session_state.localidade_escolhida[0]}!")
@@ -360,7 +371,8 @@ def tela_input_dados(df):
     
     
     # -- Concluir levantamento --
-    botao_gerar_txt = st.button("Gerar arquivo TXT do inventário")
+    col_txt, col_finalizar = st.columns(2)
+    botao_gerar_txt = col_txt.button("Gerar arquivo TXT do inventário")
     if botao_gerar_txt:
         # Transformar st.session_state.df_inventario em txt
         localidade_final = st.session_state.localidade_escolhida[0].replace('/','-')
@@ -378,7 +390,7 @@ def tela_input_dados(df):
             data=conteudo_arquivo,
             file_name=path_destino.split('/')[-1],
             mime='text/plain')
-    botao_finalizar = st.button("Finalizar Levantamento e Gerar Relatório")
+    botao_finalizar = col_finalizar.button("Finalizar Levantamento e Gerar Relatório")
     if botao_finalizar:
         st.switch_page('pages/relatorio_levantamento.py')
         
