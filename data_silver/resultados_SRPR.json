@@ -1,11 +1,11 @@
 {
-    "tamanho_inicial_mb": 20.77224063873291,
+    "tamanho_inicial_mb": 20.800488471984863,
     "qtde_colunas_inicial": 153,
-    "qtde_de_linhas_inicial": 40083,
+    "qtde_de_linhas_inicial": 40115,
     "qtde_colunas_final": 46,
-    "qtde_de_linhas_final": 40083,
-    "tamanho_final_csv_mb": 27.58884048461914,
-    "tamanho_final_json_mb": 64.13270092010498,
-    "tamanho_final_xlsx_mb": 8.826804161071777,
-    "data_processamento": "2025-10-02 19:29:35"
+    "qtde_de_linhas_final": 40115,
+    "tamanho_final_csv_mb": 27.646992683410645,
+    "tamanho_final_json_mb": 64.21570587158203,
+    "tamanho_final_xlsx_mb": 8.84221363067627,
+    "data_processamento": "2025-10-11 09:21:07"
 }
