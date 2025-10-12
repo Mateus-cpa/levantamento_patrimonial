@@ -13,6 +13,7 @@ USER_UGS = {
     "miguel.mpf": ["SRPB", "SRPE"],
     "pericles.pd": ["SRPB", "SRAC"],
     "getulio.gbs": ["SRPR", "SRAL"],
+    "celso.co": ["SRMG","SRDF","SRSP","SRSC","SRPE","CGAD"],
     "mateus.mcpa": ["SRPR", "SRPB", "DITEC"],
     "admin":  [
     'SRAC',
