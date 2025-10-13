@@ -26,7 +26,7 @@ def configurar_pagina():
 @st.cache_data
 def get_ugs_for_user(username):
     try:
-        response = requests.get(f"{API_URL}/user_ugs", params={"username": username}, timeout=10)
+        response = requests.get(f"{API_URL}/user_ugs", params={"username": username}, timeout=60)
         response.raise_for_status()
         return response.json()
     except Exception as e:
