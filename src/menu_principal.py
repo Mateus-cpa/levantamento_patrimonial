@@ -57,7 +57,7 @@ st.title("Aplicativo de inventário patrimonial")
 st.header("Credenciamento")
 st.button("Reiniciar Sessão", on_click=lambda: st.session_state.clear())
 
-users = ['Selecione um usuário', 'miguel.mpf', 'pericles.pd', 'getulio.gbs', 'mateus.mcpa', 'admin']
+users = ['Selecione um usuário', 'celso.cfs', 'miguel.mpf', 'pericles.pd', 'getulio.gbs', 'mateus.mcpa', 'admin']
 
 if not users:
     st.warning("Nenhum usuário encontrado na variável de ambiente USERS. Verifique seu arquivo .env.")
