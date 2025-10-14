@@ -13,7 +13,7 @@ USER_UGS = {
     "miguel.mpf": ["SRPB", "SRPE"],
     "pericles.pd": ["SRPB", "SRAC"],
     "getulio.gbs": ["SRPR", "SRAL"],
-    "celso.co": ["SRMG","SRDF","SRSP","SRSC","SRPE","CGAD"],
+    "celso.cfs": ["SRMG","SRDF","SRSP","SRSC","SRPE","CGAD"],
     "mateus.mcpa": ["SRPR", "SRPB", "DITEC"],
     "admin":  [
     'SRAC',
@@ -61,7 +61,8 @@ def get_user_ugs(username: str = Query(...)):
     Retorna a lista de UGs permitidas para o usuário informado.
     """
     ugs = USER_UGS.get(username, [])
-    return {"ugs": ugs}
+    perfil = "admin" if username == "admin" else "usuario"
+    return {"ugs": ugs, "perfil": perfil}
 
 app.include_router(auth_router)
 app.include_router(levantamento_router)

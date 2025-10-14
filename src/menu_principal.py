@@ -34,7 +34,7 @@ def get_ugs_for_user(username):
 
 def menu_navegacao(perfil="usuario"):
     st.subheader('## Ir para:')
-    col_levantamento, col_relatorio, col_atualizar, col_status = st.columns(4)
+    col_levantamento, col_relatorio, col_status, col_atualizar = st.columns(4)
     with col_levantamento:
         if st.button("Levantamento"):
             st.switch_page("pages/levantamento.py")
@@ -69,7 +69,7 @@ else:
             with st.spinner("Carregando UGs..."):
                 user_data = get_ugs_for_user(username)
             ugs_list = user_data.get("ugs", [])
-            perfil = user_data.get("perfil", "usuario")
+            perfil = user_data.get("perfil", "usuario").strip().lower()
             error = user_data.get("error", None)
             if error:
                 st.error(f"Erro ao buscar as UGs: {error}")
@@ -82,7 +82,7 @@ else:
                     st.success(f"Usuário '{username}' autenticado com UG {selected_ug}. Perfil: {perfil}")
                     menu_navegacao(perfil)
     else:
-        perfil = st.session_state.get("perfil", "usuario")
+        perfil = st.session_state.get("perfil", "usuario").strip().lower()
         st.success(f"Usuário '{st.session_state.username}' autenticado com UG {st.session_state.selected_ug}. Perfil: {perfil}")
         menu_navegacao(perfil)
 
