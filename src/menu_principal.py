@@ -3,6 +3,10 @@ import requests
 import os
 import json
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 API_URL = "https://levantamento-patrimonial-api.onrender.com"
 
 def configurar_pagina():
