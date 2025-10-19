@@ -84,7 +84,7 @@ def handle_login(username, password):
     """Lógica de autenticação local (para transição) ou via API (futuramente)."""
     # ⚠️ ATENÇÃO: Autenticação local apenas para demonstração do .env
     user_info = USERS.get(username)
-    if user_info and user_info["senha"] == password:
+    if user_info and user_info["password"] == password:
         st.session_state.username = username
         st.session_state.local_perfil = user_info["perfil"]
         
@@ -108,41 +108,47 @@ def handle_login(username, password):
     else:
         st.error("Usuário ou senha incorretos.")
         return False
-    
-                    
+
+
 # -- TELA PRINCIPAL --
 configurar_pagina()
 
 st.title("Aplicativo de inventário patrimonial")
 st.header("Credenciamento")
 st.button("Reiniciar Sessão", on_click=lambda: st.session_state.clear())
+if not st.session_state.is_authenticated:
+    
+    st.subheader("Login")
+    with st.form("login_form"):
+        username_input = st.selectbox("Usuário", options=[''] + list(USERS.keys()))
+        password_input = st.text_input("Senha", type="password")
+        submitted = st.form_submit_button("Entrar")
+        
+        if submitted and username_input and password_input:
+            if handle_login(username_input, password_input):
+                # O login foi bem-sucedido, agora pede a UG
+                pass
+            
+    if st.session_state.get('ugs_list'):
+        # Usuário autenticado, mas UG ainda não selecionada
+        selected_ug = st.selectbox(
+            "Selecione a UG para o levantamento:", 
+            options=['Selecione uma UG'] + st.session_state.ugs_list,
+            key='ug_selector' # Adicionado key para evitar conflito
+        )
+        
+        if selected_ug != 'Selecione uma UG':
+            st.session_state.selected_ug = selected_ug
+            st.session_state.is_authenticated = True
+            # Perfil local (do .env)
+            st.session_state.perfil = st.session_state.local_perfil
+            
+            st.success(f"Usuário '{st.session_state.username}' autenticado com UG {selected_ug}. Perfil: {st.session_state.perfil}")
+            st.rerun() # Recarrega a página para entrar no menu principal
 
-users = ['Selecione um usuário', 'celso.cfs', 'miguel.mpf', 'pericles.pd', 'getulio.gbs', 'mateus.mcpa', 'admin']
-
-if not users:
-    st.warning("Nenhum usuário encontrado na variável de ambiente USERS. Verifique seu arquivo .env.")
 else:
-    if not st.session_state.is_authenticated:
-        username = st.selectbox("Usuário", options=users)
-        if username != 'Selecione um usuário':
-            st.session_state.username = username
-            with st.spinner("Carregando UGs..."):
-                user_data = get_ugs_for_user(username)
-            ugs_list = user_data.get("ugs", [])
-            perfil = user_data.get("perfil", "usuario").strip().lower()
-            error = user_data.get("error", None)
-            if error:
-                st.error(f"Erro ao buscar as UGs: {error}")
-            else:
-                selected_ug = st.selectbox("Selecione a UG para o levantamento:", options=['Selecione uma UG'] + ugs_list)
-                if selected_ug != 'Selecione uma UG':
-                    st.session_state.selected_ug = selected_ug
-                    st.session_state.is_authenticated = True
-                    st.session_state.perfil = perfil
-                    st.success(f"Usuário '{username}' autenticado com UG {selected_ug}. Perfil: {perfil}")
-                    menu_navegacao(perfil)
-    else:
-        perfil = st.session_state.get("perfil", "usuario").strip().lower()
-        st.success(f"Usuário '{st.session_state.username}' autenticado com UG {st.session_state.selected_ug}. Perfil: {perfil}")
-        menu_navegacao(perfil)
+    # Usuário autenticado (exibe o menu)
+    perfil = st.session_state.get("perfil", "usuario").strip().lower()
+    st.success(f"Usuário '{st.session_state.username}' autenticado com UG {st.session_state.selected_ug}. Perfil: {perfil}")
+    menu_navegacao(perfil)
 
