@@ -31,8 +31,9 @@ O projeto segue a arquitetura Cliente-Servidor, onde o frontend (Streamlit) cons
 │   │   ├── credenciamento.py # Lógica autenticação (futuro JWT)
 │   ├── db/
 │   │   ├── database.py       # Configuração do Motor SQLAlchemy e Sessões
-│   │   └── model.py          # Modelos ORM (ex: User, UG, InventoryItem)
+│   │   └── model.py          # Modelos ORM (User, UG, InventoryItem)
 │   ├── levantamento/
+│   │   └── gerar_etiqueta.py
 │   ├── pages/
 │   │   ├── atualizar_base.py
 │   │   ├── levantamento.py
