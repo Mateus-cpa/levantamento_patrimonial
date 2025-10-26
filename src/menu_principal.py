@@ -85,4 +85,3 @@ else:
         perfil = st.session_state.get("perfil", "usuario").strip().lower()
         st.success(f"Usuário '{st.session_state.username}' autenticado com UG {st.session_state.selected_ug}. Perfil: {perfil}")
         menu_navegacao(perfil)
-
