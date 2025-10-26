@@ -10,12 +10,13 @@ app = FastAPI(
 
 # Exemplo de dados: mapeamento de usuários para UGs
 USER_UGS = {
-    "miguel.mpf": ["SRPB", "SRPE"],
-    "pericles.pd": ["SRPB", "SRAC"],
-    "getulio.gbs": ["SRPR", "SRAL"],
     "celso.cfs": ["SRMG","SRDF","SRSP","SRSC","SRPE","CGAD"],
+    "fuch.mpf": ["SRPR"],
+    "getulio.gbs": ["SRPR", "SRAL"],
     "mateus.mcpa": ["SRPR", "SRPB", "DITEC"],
+    "miguel.mpf": ["SRPB", "SRPE"],
     "mona.mdnm": ["SRPR", "SRSC"],
+    "pericles.pd": ["SRPB", "SRAC"],
     "admin":  [
     'SRAC',
     'SRAL',
