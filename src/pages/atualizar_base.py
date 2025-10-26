@@ -358,6 +358,9 @@ def atualizacao():
                 df_lista_materiais = ler_arquivo_xlsx_com_progresso(caminho=CAMINHO)
                 progresso.progress(50)
                 st.write('Processando planilha...')
+                if df_lista_materiais is None:
+                    st.error("Erro ao ler o arquivo Excel. Por favor, verifique o arquivo e tente novamente.")
+                    st.stop()
                 df_processado = processa_planilha(df_lista_materiais)
                 progresso.progress(70)
                 if len(df_processado.columns) != 48:
