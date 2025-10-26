@@ -15,6 +15,7 @@ USER_UGS = {
     "getulio.gbs": ["SRPR", "SRAL"],
     "celso.cfs": ["SRMG","SRDF","SRSP","SRSC","SRPE","CGAD"],
     "mateus.mcpa": ["SRPR", "SRPB", "DITEC"],
+    "mona.mdnm": ["SRPR", "SRSC"],
     "admin":  [
     'SRAC',
     'SRAL',
