@@ -31,6 +31,8 @@ reportlab = "^4.4.4"
 pypdf2 = "^3.0.1"
 streamlit-drawable-canvas = "^0.9.3"
 opencv-python = "^4.12.0.88"
+sqlalchemy = "^2.0.44"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 
 
 [tool.poetry.group.dev.dependencies]
